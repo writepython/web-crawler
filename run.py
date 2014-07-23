@@ -16,6 +16,9 @@ def mkdir_p(path):
         else: raise
 
 def download_file(current_url, data):
+    """
+    Data will either be data from an HTML file or None for other file types
+    """
     print "Attempting to download file: ", current_url
     if not data:
         get_response = requests.get(current_url)
@@ -23,7 +26,8 @@ def download_file(current_url, data):
             data = get_response.text
         else:
             print "Could not get data from file: ", current_url
-
+    if data:
+        
 def add_new_urls(current_url, html):
     print "Adding new links found at: ", current_url
     parsed_html = BeautifulSoup(html)
@@ -38,6 +42,8 @@ def crawl_url():
 
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
+        html_data = None
+        found_html = False        
         print "Starting to process url: ", current_url
         print len(urls_to_visit)
         # Look for a valid head response from the URL
@@ -46,22 +52,28 @@ def crawl_url():
             print "Received an invalid head response from URL: ", current_url
         else:
             head_content_type = head_response.headers.get('content-type')
-            html_data = None
             # If we found an HTML file, grab all the links
             if 'text/html' in head_content_type:
                 get_response = requests.get(current_url)
                 if get_response.status_code == requests.codes.ok:
                     html_data = get_response.text
+                    found_html = True
                     add_new_urls(current_url, html_data)
             # Check if we should download files with this extension
-            guessed_extension = mimetypes.guess_extension(head_content_type)
-            url_path = urlparse.urlparse(current_url).path
             proper_extension = False
+            url_path = urlparse.urlparse(current_url).path
             for file_extension in file_extensions_to_download:
-                if file_extension == guessed_extension or file_extension in url_path:
+                if file_extension in url_path:
                     proper_extension = True
                     break
-            # Check if we should download this file based on regex restrictions
+                # If we want to download all HTML files and found HTML at a non-standard extension or at "/"
+                elif file_extension == '.html' and found_html:
+                    proper_extension = True
+                    break
+                elif file_extension == '.htm' and found_html:
+                    proper_extension = True
+                    break
+            # Check if we should download this file based on regex restrictions, only if it passed the extension test
             if proper_extension:
                 if not using_regex_filters:
                     download_file(current_url, html_data)
