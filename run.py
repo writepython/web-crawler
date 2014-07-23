@@ -2,9 +2,10 @@ import os, errno
 #import urllib
 import urlparse
 import requests
+import mimetypes
 from bs4 import BeautifulSoup
 
-from config import urls_to_crawl, content_types_to_download
+from config import urls_to_crawl, file_extensions_to_download
 
 def mkdir_p(path):
     try:
@@ -31,22 +32,31 @@ def crawl_url():
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
         print len(urls_to_visit)
+        # Look for a valid head response from the URL
         head_response = requests.head(current_url)
         if head_response.status_code == requests.codes.ok:
-            current_url_head_content_type = head_response.headers.get('content-type')
-            if current_url_head_content_type == 'text/html':
+            head_content_type = head_response.headers.get('content-type')
+            html_data = None
+            # If we found an HTML file, grab all the links
+            if 'text/html' in head_content_type:
                 get_response = requests.get(current_url)
                 if get_response.status_code == requests.codes.ok:
-                    html = get_response.text
-                    add_new_urls(current_url, html)
-                    if 'text/html' in content_types_to_download:
-                        conditionally_download_file(current_url, html)
-            else:
+                    html_data = get_response.text
+                    add_new_urls(current_url, html_data)
+            # See if we should download this file
+            guessed_extension = mimetypes.guess_extension(head_content_type)
+            url_path = urlparse.urlparse(current_url).path
+            for file_extension in file_extensions_to_download:
+                if file_extension == guessed_extension or file_extension in url_path:
+                    conditionally_download_file(current_url, html)
+
                 
-                    
+
+
 
                     
-                            r.status_code == requests.codes.ok
+
+                                        r.status_code == requests.codes.ok
                         GET and parse
 
             potentially download
