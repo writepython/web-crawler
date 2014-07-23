@@ -27,6 +27,13 @@ def download_file(current_url, data):
         else:
             print "Could not get data from file: ", current_url
     if data:
+        url_parsed = urlparse.urlparse(current_url)
+        netloc_dir = os.path.join(output_dir, url_parsed.netloc)
+        if not os.path.exists(netloc_dir):
+            mkdir_p(netloc_dir)
+        url_path = url_parsed.path
+        if url_path.endswith("/") or url_path == "":
+            filename = "path_root.html"
         
 def add_new_urls(current_url, html):
     print "Adding new links found at: ", current_url
@@ -85,9 +92,10 @@ def crawl_url():
             print "Finished processing url: ", current_url
                 
 if __name__ == "__main__":
-    #output_directory = os.path.join( os.path.dirname(__file__), 'output' )
-    output_directory = os.path.join( os.getcwd(), "output" )
-
+    output_dir = os.path.join( os.getcwd(), "output" )
+    if not os.path.exists(output_dir):
+        mkdir_p(output_dir)
+    
     for d in urls_to_crawl:
         initial_url = d["url"]
         urls_to_visit = [initial_url]
