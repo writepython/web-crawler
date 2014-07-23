@@ -15,10 +15,17 @@ def mkdir_p(path):
             pass
         else: raise
 
-def conditionally_download_file(current_url, html=None):            
-    return True
+def download_file(current_url, data):
+    print "Attempting to download file: ", current_url
+    if not data:
+        get_response = requests.get(current_url)
+        if get_response.status_code == requests.codes.ok:
+            data = get_response.text
+        else:
+            print "Could not get data from file: ", current_url
 
 def add_new_urls(current_url, html):
+    print "Adding new links found at: ", current_url
     parsed_html = BeautifulSoup(html)
     for tag in parsed_html.findAll('a', href=True):
         href_absolute_url = urlparse.urljoin(current_url, tag['href'])
@@ -31,10 +38,13 @@ def crawl_url():
 
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
+        print "Starting to process url: ", current_url
         print len(urls_to_visit)
         # Look for a valid head response from the URL
         head_response = requests.head(current_url)
-        if head_response.status_code == requests.codes.ok:
+        if not head_response.status_code == requests.codes.ok:
+            print "Received an invalid head response from URL: ", current_url
+        else:
             head_content_type = head_response.headers.get('content-type')
             html_data = None
             # If we found an HTML file, grab all the links
@@ -43,45 +53,24 @@ def crawl_url():
                 if get_response.status_code == requests.codes.ok:
                     html_data = get_response.text
                     add_new_urls(current_url, html_data)
-            # See if we should download this file
+            # Check if we should download files with this extension
             guessed_extension = mimetypes.guess_extension(head_content_type)
             url_path = urlparse.urlparse(current_url).path
+            proper_extension = False
             for file_extension in file_extensions_to_download:
                 if file_extension == guessed_extension or file_extension in url_path:
-                    conditionally_download_file(current_url, html)
-
-                
-
-
-
-                    
-
-                                        r.status_code == requests.codes.ok
-                        GET and parse
-
-            potentially download
-        else:
-            potentially download
-            
-
-            r.status_code == requests.codes.ok
-
-
-        try:
-            html = urllib.urlopen(current_url).read()
-        except:
-            print "Error accessing url: ", current_url
-        else:
-            try:
-
-            except:
-                print "Error parsing html for url: ", current_url
-            else:
-                try:
-                    conditionally_download_url(current_url, html)
-                except:
-                    print "Error downloading file: ", current_url
-if regex1.search(test)
+                    proper_extension = True
+                    break
+            # Check if we should download this file based on regex restrictions
+            if proper_extension:
+                if not using_regex_filters:
+                    download_file(current_url, html_data)
+                else:
+                    for regex_filter in regex_filters:
+                        if regex_filter.search(current_url):
+                            download_file(current_url, html_data)
+                            break
+            print "Finished processing url: ", current_url
                 
 if __name__ == "__main__":
     #output_directory = os.path.join( os.path.dirname(__file__), 'output' )
