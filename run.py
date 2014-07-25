@@ -5,8 +5,6 @@ from bs4 import BeautifulSoup
 from test_config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
 
 fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_')
-files_written = 0            
-errors_encountered = 0
 
 def mkdir_p(path):
     try:
@@ -37,7 +35,7 @@ def download_file(current_url, data, encoding):
             fs_path = netloc
         else:
             if url_path.endswith("/"): 
-                url_path = url_path + "root.file" 
+                url_path = url_path + "root" 
             url_path = netloc + "/" + url_path
             url_path = ''.join(c for c in url_path if c in fs_path_acceptable_chars)                
             url_path_list = url_path.split("/")
@@ -62,11 +60,13 @@ def add_new_urls(current_url, html):
             href = href[:anchor_index] # We don't care about anchors
         if href:
             href_absolute_url = urlparse.urljoin(current_url, href)
-            if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
-                urls_to_visit.append(href_absolute_url)
-                all_urls.append(href_absolute_url)
+            if href_absolute_url.startswith('http'): # We don't care about mailto:foo@bar.com etc.
+                if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
+                    urls_to_visit.append(href_absolute_url)
+                    all_urls.append(href_absolute_url)
 
 def crawl_url():
+    global errors_encountered
     print "\n* NEW CRAWLING SESSION FOR CONFIG URL: %s *\n" % seed_url
 
     while len(urls_to_visit) > 0:
@@ -109,9 +109,10 @@ def crawl_url():
                             if regex_filter.search(current_url):
                                 download_file(current_url, html_data, encoding)
                                 break
-            print "Files Found: %d  Remaining: %d  Written: %d  Operational Errors: %d" % ( len(all_urls), len(urls_to_visit), files_written, errors_encountered )
+            global files_processed
+            files_processed += 1
+            print "Files Found: %d  Processed: %d  Remaining: %d  Written: %d  Operational Errors: %d" % ( len(all_urls), files_processed, len(urls_to_visit), files_written, errors_encountered )
         except:
-            global errors_encountered
             errors_encountered += 1
             try:
                 traceback_info = '\n'.join(traceback.format_exception(*(sys.exc_info())))
@@ -125,6 +126,9 @@ if __name__ == "__main__":
         mkdir_p(output_dir)
     
     for d in urls_to_crawl:
+        files_processed = 0
+        files_written = 0            
+        errors_encountered = 0
         seed_url = d["url"]
         urls_to_visit = [seed_url]
         all_urls = [seed_url]
@@ -139,4 +143,4 @@ if __name__ == "__main__":
         print start_time
         crawl_url()
         end_time = datetime.datetime.now()
-        print "\nStart: %s\nFinish: %s" % (start_time, end_time)
+        print "\nStart:  %s\nFinish: %s" % (start_time, end_time)

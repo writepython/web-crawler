@@ -5,8 +5,8 @@ file_extensions_list = []
 
 urls_to_crawl = [
     {
-        "url": "http://www.google.com",
-        "follow_links_containing": "www.google.com",
-        "regex_filters": [r"rya."]
+        "url": "http://madeinheights.com",
+        "follow_links_containing": "madeinheights.com",
+        "regex_filters": [r"story"]
     }
 ]
