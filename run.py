@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
 
-fs_path_acceptabl_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._')
+fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._')
 files_written = 0            
     
 def mkdir_p(path):
@@ -33,13 +33,13 @@ def download_file(current_url, data, encoding):
         netloc = url_parsed.netloc
         url_path = url_parsed.path.strip().lstrip("/")
         if url_path == "":
-            filename = "root.file" # Could guess extension based on mimetype
+            filename = "root.file" # Could also guess extension based on mimetype
             fs_path = netloc
         else:
             if url_path.endswith("/"): # There is still an extreme edge case where we have file /abc and then later directory /abc/
-                url_path = url_path + "root.file" # Could guess extension based on mimetype
+                url_path = url_path + "root.file" # Could also guess extension based on mimetype
             url_path = netloc + "/" + url_path
-            url_path = ''.join(c for c in url_path if c in fs_path_acceptabl_chars)                
+            url_path = ''.join(c for c in url_path if c in fs_path_acceptable_chars)                
             url_path_list = url_path.split("/")
             filename = url_path_list.pop()
             fs_path = "/".join(url_path_list)            
