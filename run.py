@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
 
-fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._')
+fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_')
 files_written = 0            
     
 def mkdir_p(path):
@@ -27,21 +27,22 @@ def download_file(current_url, data, encoding):
             data = get_response.text
             encoding = get_response.encoding
         else:
-            print "Could not get data from file: ", current_url
+            print "Received an invalid GET response"
     if data:
         url_parsed = urlparse.urlparse(current_url)
         netloc = url_parsed.netloc
         url_path = url_parsed.path.strip().lstrip("/")
         if url_path == "":
-            filename = "root.file" # Could also guess extension based on mimetype
+            filename = "root.file" 
             fs_path = netloc
         else:
-            if url_path.endswith("/"): # There is still an extreme edge case where we have file /abc and then later directory /abc/
-                url_path = url_path + "root.file" # Could also guess extension based on mimetype
+            if url_path.endswith("/"): 
+                url_path = url_path + "root.file" 
             url_path = netloc + "/" + url_path
             url_path = ''.join(c for c in url_path if c in fs_path_acceptable_chars)                
             url_path_list = url_path.split("/")
             filename = url_path_list.pop()
+            filename = filename[:249] + ".file" # Most systems have a 255 char limit on filenames
             fs_path = "/".join(url_path_list)            
         fs_path = os.path.join( output_dir, fs_path)
         mkdir_p(fs_path)
@@ -56,28 +57,33 @@ def add_new_urls(current_url, html):
     print "Adding new links"
     parsed_html = BeautifulSoup(html)
     for tag in parsed_html.findAll('a', href=True):
-        href_absolute_url = urlparse.urljoin(current_url, tag['href'].strip() ) # Stripping handles <a href=" http...
-        if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
-            urls_to_visit.append(href_absolute_url)
-            all_urls.append(href_absolute_url)
+        href = tag['href'].strip() # Stripping handles <a href=" http...
+        anchor_index = href.rfind("#") 
+        if anchor_index != -1:
+            href = href[:anchor_index] # We don't care about anchors
+        if href:
+            href_absolute_url = urlparse.urljoin(current_url, href)
+            if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
+                urls_to_visit.append(href_absolute_url)
+                all_urls.append(href_absolute_url)
 
 def crawl_url():
-    print "\n* NEW CRAWLING SESSION FOR URL: %s *\n" % initial_url
+    print "\n* NEW CRAWLING SESSION FOR URL: %s *\n" % seed_url
 
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
         try:
-            current_url_parsed = urlparse.urlparse(current_url)
             html_data = None
             met_mimetype_criteria = False
             met_file_extension_criteria = False                                        
             print "\nSTARTING TO PROCESS URL: %s\n" % current_url
             print "Remaining URLs: %d" % len(urls_to_visit)
             # Look for a valid head response from the URL
-            head_response = requests.head(current_url, timeout=request_timeout)
+            head_response = requests.head(current_url, allow_redirects=True, timeout=request_timeout)
             if not head_response.status_code == requests.codes.ok:
-                print "Received an invalid head response"
+                print "Received an invalid HEAD response"
             else:
+                #current_url = head_response.url # In case we got a redirect
                 head_content_type = head_response.headers.get('content-type')
                 # If we found an HTML file, grab all the links
                 if 'text/html' in head_content_type:
@@ -86,6 +92,8 @@ def crawl_url():
                         html_data = get_response.text
                         encoding = get_response.encoding                    
                         add_new_urls(current_url, html_data)
+                    else:
+                        print "Received an invalid GET response"
                 # Check if we should download files with this mimetype or extension
                 for mimetype in mimetypes_list:
                     if mimetype in head_content_type:
@@ -118,9 +126,9 @@ if __name__ == "__main__":
         mkdir_p(output_dir)
     
     for d in urls_to_crawl:
-        initial_url = d["url"]
-        urls_to_visit = [initial_url]
-        all_urls = [initial_url]
+        seed_url = d["url"]
+        urls_to_visit = [seed_url]
+        all_urls = [seed_url]
         follow_links_containing = d["follow_links_containing"]
         regex_filters = d.get("regex_filters")
         if regex_filters:
