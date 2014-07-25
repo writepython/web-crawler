@@ -2,11 +2,9 @@ import os, errno, string, urlparse, mimetypes
 import requests
 from bs4 import BeautifulSoup
 
-from config import urls_to_crawl, file_extensions_to_download
+from config import urls_to_crawl, file_extensions_list, mimetypes_list
 
-fs_path_acceptabl_chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._'
-
-fs_path_trans_table  = string.maketrans( fs_path_acceptabl_chars, '_' * len(fs_path_acceptabl_chars) )
+fs_path_acceptabl_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/._')
     
 def mkdir_p(path):
     try:
@@ -30,34 +28,30 @@ def download_file(current_url, data):
     if data:
         url_parsed = urlparse.urlparse(current_url)
         netloc = url_parsed.netloc
-        url_path = url_parsed.path.strip()
-        if url_path in ["/", "", ".", ".."]:
-            fs_path = netloc
-            with open('workfile', 'r') as f:
+        url_path = url_parsed.path.strip().lstrip("/")
+        if url_path == "":
             filename = "root.file"
-            fs_path = None
-        elif url_path.endswith("/"): # Still not catching the edge case where we have file /abc and then later directory /abc/
-            fs_path = url_path + "root.file"
+            fs_path = netloc
         else:
-            path = url_path.strip("/")
-            path = url_path.split("/")
-            path = [ p.translate(fs_path_trans_table) for p in path ]
-            path = "/".join(path)
-
-
-with open('workfile', 'r') as f:            
-        #netloc_dir = os.path.join(output_dir, url_parsed.netloc)
-        #if not os.path.exists(netloc_dir):
-        #mkdir_p(netloc_dir)
-        url_path = url_parsed.path
-        if url_path.endswith("/") or url_path == "":
-            filename = "path_root.html"
+            if url_path.endswith("/"): # Still not catching the edge case where we have file /abc and then later directory /abc/
+                url_path = url_path + "root.file"
+            url_path = netloc + "/" + url_path
+            url_path = ''.join(c for c in url_path if c in fs_path_acceptabl_chars)                
+            url_path_list = url_path.split("/")
+            filename = url_path_list.pop()
+            fs_path = "/".join(url_path_list)            
+        fs_path = os.path.join( output_dir, fs_path)
+        print fs_path
+        mkdir_p(fs_path)
+        filepath = os.path.join(fs_path, filename)
+        with open(filepath, 'w') as f:
+            f.write(data.encode('utf8'))            
         
 def add_new_urls(current_url, html):
     print "Adding new links found at: ", current_url
     parsed_html = BeautifulSoup(html)
     for tag in parsed_html.findAll('a', href=True):
-        href_absolute_url = urlparse.urljoin(current_url, tag['href'])
+        href_absolute_url = urlparse.urljoin(current_url, tag['href'].strip() ) # Stripping handles <a href=" http...
         if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
             urls_to_visit.append(href_absolute_url)
             all_urls.append(href_absolute_url)
@@ -86,11 +80,11 @@ def crawl_url():
                     html_data = get_response.text
                     add_new_urls(current_url, html_data)
             # Check if we should download files with this mimetype or extension
-            for mimetype in mimetypes:
+            for mimetype in mimetypes_list:
                 if mimetype in head_content_type:
                     met_mimetype_criteria = True
             if not met_mimetype_criteria:
-                for file_extension in file_extensions:
+                for file_extension in file_extensions_list:
                     if file_extension in current_url: # This could be swapped for urlparse(current_url).path...[-1]
                         met_file_extension_criteria = True                
             # Check if we should download this file based on potential regex restrictions, only if it passes the mimetype or extension tests
@@ -113,7 +107,7 @@ if __name__ == "__main__":
         initial_url = d["url"]
         urls_to_visit = [initial_url]
         all_urls = [initial_url]
-        follow_link_containing = d["follow_links_containing"]
+        follow_links_containing = d["follow_links_containing"]
         regex_filters = d.get("regex_filters")
         if regex_filters:
             using_regex_filters = True
