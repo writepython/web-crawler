@@ -1,12 +1,13 @@
-import os, re, sys, errno, traceback, string, urlparse, mimetypes
+import os, re, sys, errno, traceback, datetime, string, urlparse, mimetypes
 import requests
 from bs4 import BeautifulSoup
 
-from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
+from test_config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
 
 fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_')
 files_written = 0            
-    
+errors_encountered = 0
+
 def mkdir_p(path):
     try:
         os.makedirs(path)
@@ -49,7 +50,7 @@ def download_file(current_url, data, encoding):
         print "Writing file: ", filepath
         with open(filepath, 'w') as f:
             f.write( data.encode(encoding) )
-        global  files_written
+        global files_written
         files_written += 1        
         
 def add_new_urls(current_url, html):
@@ -66,7 +67,7 @@ def add_new_urls(current_url, html):
                 all_urls.append(href_absolute_url)
 
 def crawl_url():
-    print "\n* NEW CRAWLING SESSION FOR URL: %s *\n" % seed_url
+    print "\n* NEW CRAWLING SESSION FOR CONFIG URL: %s *\n" % seed_url
 
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
@@ -74,7 +75,7 @@ def crawl_url():
             html_data = None
             met_mimetype_criteria = False
             met_file_extension_criteria = False                                        
-            print "\nStarting to process URL: %s\n" % current_url
+            print "\nProcessing URL: %s\n" % current_url
             # Look for a valid head response from the URL
             head_response = requests.head(current_url, allow_redirects=True, timeout=request_timeout)
             if not head_response.status_code == requests.codes.ok:
@@ -108,8 +109,10 @@ def crawl_url():
                             if regex_filter.search(current_url):
                                 download_file(current_url, html_data, encoding)
                                 break
-            print "Files Found: %d  Remaining: %d  Written: %d" % ( len(all_urls), len(urls_to_visit), files_written )
+            print "Files Found: %d  Remaining: %d  Written: %d  Operational Errors: %d" % ( len(all_urls), len(urls_to_visit), files_written, errors_encountered )
         except:
+            global errors_encountered
+            errors_encountered += 1
             try:
                 traceback_info = '\n'.join(traceback.format_exception(*(sys.exc_info())))
             except:
@@ -132,4 +135,8 @@ if __name__ == "__main__":
             regex_filters = [ re.compile(regex_filter) for regex_filter in regex_filters ]
         else:
             using_regex_filters = False
+        start_time = datetime.datetime.now()
+        print start_time
         crawl_url()
+        end_time = datetime.datetime.now()
+        print "\nStart: %s\nFinish: %s" % (start_time, end_time)
