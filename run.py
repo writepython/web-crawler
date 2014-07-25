@@ -20,7 +20,6 @@ def download_file(current_url, data, encoding):
     Data will either be data from an HTML file or None
     Encoding is the encoding of the data
     """
-    print "Attempting to download file"
     if not data:
         get_response = requests.get(current_url, timeout=request_timeout)
         if get_response.status_code == requests.codes.ok:
@@ -47,14 +46,13 @@ def download_file(current_url, data, encoding):
         fs_path = os.path.join( output_dir, fs_path)
         mkdir_p(fs_path)
         filepath = os.path.join(fs_path, filename)
-        print "* Writing file: ", filepath
+        print "Writing file: ", filepath
         with open(filepath, 'w') as f:
             f.write( data.encode(encoding) )
         global  files_written
         files_written += 1        
         
 def add_new_urls(current_url, html):
-    print "Adding new links"
     parsed_html = BeautifulSoup(html)
     for tag in parsed_html.findAll('a', href=True):
         href = tag['href'].strip() # Stripping handles <a href=" http...
@@ -76,8 +74,7 @@ def crawl_url():
             html_data = None
             met_mimetype_criteria = False
             met_file_extension_criteria = False                                        
-            print "\nSTARTING TO PROCESS URL: %s\n" % current_url
-            print "Remaining URLs: %d" % len(urls_to_visit)
+            print "\nStarting to process URL: %s\n" % current_url
             # Look for a valid head response from the URL
             head_response = requests.head(current_url, allow_redirects=True, timeout=request_timeout)
             if not head_response.status_code == requests.codes.ok:
@@ -111,8 +108,7 @@ def crawl_url():
                             if regex_filter.search(current_url):
                                 download_file(current_url, html_data, encoding)
                                 break
-            print "Files written: %d" % files_written
-            print "Finished processing URL"
+            print "Files Found: %d  Remaining: %d  Written: %d" % ( len(all_urls), len(urls_to_visit), files_written )
         except:
             try:
                 traceback_info = '\n'.join(traceback.format_exception(*(sys.exc_info())))
