@@ -8,7 +8,7 @@ The value of URLs to visit will thus grow initially, round off when no new URLs 
 
 === Usage ===
 
-1. cd web_crawler
+1. cd web-crawler-master
 2. Edit config.py (Explanation below)
 3. python run.py
 
