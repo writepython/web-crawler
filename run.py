@@ -2,7 +2,7 @@ import os, re, sys, errno, traceback, datetime, string, urlparse, mimetypes
 import requests
 from bs4 import BeautifulSoup
 
-from test_config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
+from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
 
 fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_')
 
@@ -27,9 +27,13 @@ def download_file(current_url, data, encoding):
         else:
             print "Received an invalid GET response"
     if data:
-        url_parsed = urlparse.urlparse(current_url)
+        url_parsed = urlparse.urlsplit(current_url)
         netloc = url_parsed.netloc
-        url_path = url_parsed.path.strip().lstrip("/")
+        url_path = url_parsed.path.strip().lstrip("/")        
+        if preserve_query_strings:
+            query_string = url_parsed.query
+            if query_string:
+            url_path = url_path + '?' + query_string
         if url_path == "":
             filename = "root.file" 
             fs_path = netloc
@@ -60,6 +64,14 @@ def add_new_urls(current_url, html):
             href = href[:anchor_index] # We don't care about anchors
         if href:
             href_absolute_url = urlparse.urljoin(current_url, href)
+
+            url_parsed = urlparse.urlsplit(href_absolute_url)
+            netloc = url_parsed.netloc
+            url_path = url_parsed.path
+            if not preserve_query_strings:
+                url_parsed.query = ''
+            url_unsplit = urlparse.urlunsplit(href_absolute_url)
+            
             if href_absolute_url.startswith('http'): # We don't care about mailto:foo@bar.com etc.
                 if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
                     urls_to_visit.append(href_absolute_url)
@@ -98,7 +110,7 @@ def crawl_url():
                         met_mimetype_criteria = True
                 if not met_mimetype_criteria:
                     for file_extension in file_extensions_list:
-                        if file_extension in current_url: # This could be swapped for urlparse(current_url).path...[-1]
+                        if file_extension in current_url: # This could be swapped for urlsplit(current_url).path...[-1]
                             met_file_extension_criteria = True                
                 # Check if we should download this file based on potential regex restrictions, only if it passes the mimetype or extension tests
                 if met_mimetype_criteria or met_file_extension_criteria:

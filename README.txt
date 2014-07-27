@@ -1,3 +1,18 @@
+"""
+Expected Variables:
+
+file_extensions is an array of file extensions that determine which files will be downloaded, provided they meet other criteria like regular expression filters.
+
+mimetypes is an array of mimetypes that determine which files will be downloaded, provided they meet other criteria like regular expression filters.
+  
+urls_to_crawl is an array of hashes containing the items url, follow_links_containing, and (optionally) regex_filters.
+
+url is a url string in the style http://www.main.russia.org
+
+follow_links_containing is a string that determines what links are followed.  For example, www.main.russia.org will follow all links containing www.main.russia.org and russia.org will follow all links containing russia.org.  www.main.russia.org is thus more restrictive.
+
+regex_filters is an optional array of Perl-style regular expression patterns.  Files matching any one of the patters will be dowloaded.  "\d" means a single digit and "." means any character except the newline character.  http://docs.python.org/2/howto/regex.html#regex-howto
+"""
 In config.py:
 
 urls_to_crawl is an array of hashes containing the items url, follow_links_containing, and regex_filters.
