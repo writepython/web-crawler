@@ -6,7 +6,6 @@ The program will then crawl each seed URL in succession and add any subsequently
 As each URL is visited, if it satisfies the given filtering parameters, it will be downloaded while maintaining the directory structure of the website.
 The value of URLs to visit will thus grow initially, round off when no new URLs are being discovered, and eventually shrink down to zero, at which point the program will move on to the next seed URL, or exit if there are no more URLs to process.
 
-
 === Usage ===
 
 1. cd web_crawler
