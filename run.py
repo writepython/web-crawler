@@ -4,7 +4,8 @@ from bs4 import BeautifulSoup
 
 from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
 
-fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_')
+# fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_?%')
+fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/.-_?%]") # The / char will be split out later
 
 def mkdir_p(path):
     try:
@@ -29,10 +30,9 @@ def download_file(current_url, data, encoding):
     if data:
         url_parsed = urlparse.urlsplit(current_url)
         netloc = url_parsed.netloc
-        url_path = url_parsed.path.strip().lstrip("/")        
-        if preserve_query_strings:
-            query_string = url_parsed.query
-            if query_string:
+        url_path = url_parsed.path.strip().lstrip("/")
+        query_string = url_parsed.query
+        if query_string:
             url_path = url_path + '?' + query_string
         if url_path == "":
             filename = "root.file" 
@@ -41,8 +41,8 @@ def download_file(current_url, data, encoding):
             if url_path.endswith("/"): 
                 url_path = url_path + "root" 
             url_path = netloc + "/" + url_path
-            url_path = ''.join(c for c in url_path if c in fs_path_acceptable_chars)                
-            url_path_list = url_path.split("/")
+            url_path_sanitized = fs_path_bad_chars_re.sub('_', url_path)
+            url_path_list = url_path_sanitized.split("/")
             filename = url_path_list.pop()
             filename = filename[:249] + ".file" # Most systems have a 255 char limit on filenames
             fs_path = "/".join(url_path_list)            
@@ -64,14 +64,6 @@ def add_new_urls(current_url, html):
             href = href[:anchor_index] # We don't care about anchors
         if href:
             href_absolute_url = urlparse.urljoin(current_url, href)
-
-            url_parsed = urlparse.urlsplit(href_absolute_url)
-            netloc = url_parsed.netloc
-            url_path = url_parsed.path
-            if not preserve_query_strings:
-                url_parsed.query = ''
-            url_unsplit = urlparse.urlunsplit(href_absolute_url)
-            
             if href_absolute_url.startswith('http'): # We don't care about mailto:foo@bar.com etc.
                 if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
                     urls_to_visit.append(href_absolute_url)
@@ -152,7 +144,7 @@ if __name__ == "__main__":
         else:
             using_regex_filters = False
         start_time = datetime.datetime.now()
-        print start_time
+        print "\nCurrent Time:  %s" % start_time
         crawl_url()
         end_time = datetime.datetime.now()
-        print "\nStart:  %s\nFinish: %s" % (start_time, end_time)
+        print "\nStart:  %s\nFinish: %s\n" % (start_time, end_time)
