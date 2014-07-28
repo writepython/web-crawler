@@ -1,10 +1,10 @@
 === About ===
 
-This python web crawler will read in a configuration file containing seed URLs to crawl, and download filtering parameters.  
-A directory called "output" will be created inside the current working directory (the directory from which the script was invoked).
-The program will then crawl each seed URL in succession and add any subsequently found URLs to a queue of URLs to visit.
-As each URL is visited, if it satisfies the given filtering parameters, it will be downloaded while maintaining the directory structure of the website.
-The value of URLs to visit will thus grow initially, round off when no new URLs are being discovered, and eventually shrink down to zero, at which point the program will move on to the next seed URL, or exit if there are no more URLs to process.
+-This python web crawler will read in a configuration file containing seed URLs to crawl, and download filtering parameters.  
+-A directory called "output" will be created inside the current working directory (the directory from which the script was invoked).
+-The program will then crawl each seed URL in succession and add any subsequently found URLs to a queue of URLs to visit.
+-As each URL is visited, if it satisfies the given filtering parameters, it will be downloaded while maintaining the directory structure of the website.
+-The value of URLs to visit will thus grow initially, round off when no new URLs are being discovered, and eventually shrink down to zero, at which point the program will move on to the next seed URL, or exit if there are no more URLs to process.
 
 === Usage ===
 
