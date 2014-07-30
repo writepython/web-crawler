@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
 
 # fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_?%')
-fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/.-_?%]") # The / char will be split out later
+fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/._?%=-]") # The / char will be split out later
 
 def mkdir_p(path):
     try:
