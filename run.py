@@ -1,10 +1,9 @@
-import os, re, sys, errno, traceback, datetime, string, urlparse, mimetypes
+import os, re, sys, errno, time, traceback, datetime, string, urlparse, mimetypes
 import requests
 from bs4 import BeautifulSoup
 
-from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout
+from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout, request_delay
 
-# fs_path_acceptable_chars = frozenset('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/.-_?%')
 fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/._?%=-]") # The / char will be split out later
 
 def mkdir_p(path):
@@ -76,6 +75,7 @@ def crawl_url():
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
         try:
+            time.sleep(request_delay)
             html_data = None
             met_mimetype_criteria = False
             met_file_extension_criteria = False                                        

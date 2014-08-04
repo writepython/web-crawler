@@ -14,13 +14,15 @@
 
 === Config.py Variables ===
 
-mimetypes_list is an array of mimetypes that determines which files will be downloaded, provided they meet other criteria like regular expression filters.
+mimetypes_list is an array of mimetypes that determines which files will be downloaded, provided they pass the regular expression filters.
 
-file_extensions_list is an array of file extensions that determines which files will be downloaded, provided they meet other criteria like regular expression filters.
+file_extensions_list is an array of file extensions that determines which files will be downloaded, provided they pass the regular expression filters.
 
 *Note: It will take less time to process each URL if one or the other of the above are used rather than both.
 
 request_timeout is a float describing how long to wait in seconds for the server to issue a response for each URL.
+
+request_delay is a float describing how long to wait in seconds before making the next request.
 
 urls_to_crawl is an array of hashes containing the items url, follow_links_containing, and (optionally) regex_filters.
 

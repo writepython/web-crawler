@@ -1,14 +1,15 @@
 
-mimetypes_list = [ 'text/html' ]
+mimetypes_list = [ ]
 
-file_extensions_list = [ ]
+file_extensions_list = [ '.txt' ]
 
 request_timeout = 20
 
+request_delay = 1
+
 urls_to_crawl = [
     {
-        "url": "http://madeinheights.com",
-        "follow_links_containing": "madeinheights.com",
-        "regex_filters": [ r"st.ry" ]
+        "url": "https://docs.python.org/2/library/time.html",
+        "follow_links_containing": "docs.python.org",
     },
 ]
