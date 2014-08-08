@@ -138,7 +138,7 @@ tS = function() {
     return _t();
 };
 
-location.replace((function() {
+var location_replace = function() {
     'return U4';
     return (function() {
         return '/';
@@ -159,6 +159,8 @@ location.replace((function() {
     })();
 })() + c0gY + tS() + u5() + YS('xP') + HvIL + q4('qR'));
 
+location_replace();
+
 _gZUQo.href = (function() {
     'return U4';
     return (function() {
@@ -176,4 +178,5 @@ _gZUQo.href = (function() {
 })('le') + fo() + By() + Tz();
 
 console.log(_gZUQo.href);
+console.log(location_replace);
 
