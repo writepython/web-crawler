@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout, request_delay
 
 fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/._?%=-]") # The / char will be split out later
+request_headers = { 'User-Agent': 'My User Agent 1.0' }
 
 def mkdir_p(path):
     try:
@@ -20,7 +21,7 @@ def download_file(current_url, data, encoding):
     Encoding is the encoding of the data
     """
     if not data:
-        get_response = requests.get(current_url, timeout=request_timeout)
+        get_response = requests.get(current_url, headers=request_headers, timeout=request_timeout)
         if get_response.status_code == requests.codes.ok:
             data = get_response.text
             encoding = get_response.encoding
@@ -58,15 +59,36 @@ def add_new_urls(current_url, html):
     parsed_html = BeautifulSoup(html)
     for tag in parsed_html.findAll('a', href=True):
         href = tag['href'].strip() # Stripping handles <a href=" http...
-        anchor_index = href.rfind("#") 
+        anchor_index = href.find("#") 
         if anchor_index != -1:
             href = href[:anchor_index] # We don't care about anchors
         if href:
+            if ignore_query_strings:
+                query_string_index = href.find("?") 
+                if query_string_index != -1:
+                    href = href[:query_string_index]
             href_absolute_url = urlparse.urljoin(current_url, href)
             if href_absolute_url.startswith('http'): # We don't care about mailto:foo@bar.com etc.
                 if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
-                    urls_to_visit.append(href_absolute_url)
-                    all_urls.append(href_absolute_url)
+                    try:
+                        if execute_javascript_in_browser:
+                            browser.get(href_absolute_url)
+                            new_url = browser.current_url
+                            if new_url not in all_urls:
+                                urls_to_visit.append(new_url)
+                                all_urls.append(new_url)                            
+                        else:
+                            head_response = requests.head(href_absolute_url, allow_redirects=True, headers=request_headers, timeout=request_timeout)
+                            new_url = head_response.url  
+                            if head_response.status_code == requests.codes.ok:
+                                if new_url not in all_urls:
+                                    urls_to_visit.append(new_url)
+                                    all_urls.append(new_url)
+                            else:
+                                if new_url not in all_urls:
+                                    all_urls.append(new_url)                                
+                    except:
+                        print "Error handling the discovered URL: ", href_absolute_url
 
 def crawl_url():
     global errors_encountered
@@ -81,15 +103,14 @@ def crawl_url():
             met_file_extension_criteria = False                                        
             print "\nProcessing URL: %s\n" % current_url
             # Look for a valid head response from the URL
-            head_response = requests.head(current_url, allow_redirects=True, timeout=request_timeout)
-            if not head_response.status_code == requests.codes.ok:
-                print "Received an invalid HEAD response"
+            head_response = requests.head(current_url, allow_redirects=True, headers=request_headers, timeout=request_timeout)
+#********************************
+                
             else:
-                #current_url = head_response.url # In case we got a redirect
                 head_content_type = head_response.headers.get('content-type')
                 # If we found an HTML file, grab all the links
                 if 'text/html' in head_content_type:
-                    get_response = requests.get(current_url, timeout=request_timeout)
+                    get_response = requests.get(current_url, headers=request_headers, timeout=request_timeout)
                     if get_response.status_code == requests.codes.ok:
                         html_data = get_response.text
                         encoding = get_response.encoding                    
@@ -130,6 +151,10 @@ if __name__ == "__main__":
         mkdir_p(output_dir)
     
     for d in urls_to_crawl:
+        try:
+            browser.close()
+        except:
+            pass
         files_processed = 0
         files_written = 0            
         errors_encountered = 0
@@ -137,6 +162,10 @@ if __name__ == "__main__":
         urls_to_visit = [seed_url]
         all_urls = [seed_url]
         follow_links_containing = d["follow_links_containing"]
+        handle_js_redirects_with_browser = d.get("handle_js_redirects_with_browser", False)
+        ignore_query_strings = d.get("ignore_query_strings", False)
+        if handle_js_redirects_with_browser:
+            browser = webdriver.Firefox() 
         regex_filters = d.get("regex_filters")
         if regex_filters:
             using_regex_filters = True
