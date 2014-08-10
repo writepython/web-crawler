@@ -1,11 +1,12 @@
-import os, re, sys, errno, time, traceback, datetime, string, urlparse, mimetypes
+import os, re, sys, errno, time, traceback, datetime, string, urlparse, mimetypes, platform
 import requests
 from bs4 import BeautifulSoup
+from selenium import webdriver
 
-from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout, request_delay
+from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout, request_delay, browser_name
 
 fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/._?%=-]") # The / char will be split out later
-request_headers = { 'User-Agent': 'My User Agent 1.0' }
+request_headers = { 'User-Agent': 'Mozilla/5.0' }
 
 def mkdir_p(path):
     try:
@@ -70,25 +71,21 @@ def add_new_urls(current_url, html):
             href_absolute_url = urlparse.urljoin(current_url, href)
             if href_absolute_url.startswith('http'): # We don't care about mailto:foo@bar.com etc.
                 if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
-                    try:
-                        if execute_javascript_in_browser:
+                    new_url = None
+                    for i in range(2):
+                        try:
+                            # Get final URL after HTTP and JS redirects
+                            print "Requesting URL: ", href_absolute_url
                             browser.get(href_absolute_url)
                             new_url = browser.current_url
-                            if new_url not in all_urls:
-                                urls_to_visit.append(new_url)
-                                all_urls.append(new_url)                            
+                        except:
+                            print "Error handling the discovered URL: ", href_absolute_url
                         else:
-                            head_response = requests.head(href_absolute_url, allow_redirects=True, headers=request_headers, timeout=request_timeout)
-                            new_url = head_response.url  
-                            if head_response.status_code == requests.codes.ok:
-                                if new_url not in all_urls:
-                                    urls_to_visit.append(new_url)
-                                    all_urls.append(new_url)
-                            else:
-                                if new_url not in all_urls:
-                                    all_urls.append(new_url)                                
-                    except:
-                        print "Error handling the discovered URL: ", href_absolute_url
+                            break
+                    if new_url:
+                        if new_url not in all_urls:
+                            urls_to_visit.append(new_url)
+                            all_urls.append(new_url)                            
 
 def crawl_url():
     global errors_encountered
@@ -104,8 +101,8 @@ def crawl_url():
             print "\nProcessing URL: %s\n" % current_url
             # Look for a valid head response from the URL
             head_response = requests.head(current_url, allow_redirects=True, headers=request_headers, timeout=request_timeout)
-#********************************
-                
+            if not head_response.status_code == requests.codes.ok:
+                print "Received an invalid HEAD response"
             else:
                 head_content_type = head_response.headers.get('content-type')
                 # If we found an HTML file, grab all the links
@@ -151,10 +148,6 @@ if __name__ == "__main__":
         mkdir_p(output_dir)
     
     for d in urls_to_crawl:
-        try:
-            browser.close()
-        except:
-            pass
         files_processed = 0
         files_written = 0            
         errors_encountered = 0
@@ -162,16 +155,35 @@ if __name__ == "__main__":
         urls_to_visit = [seed_url]
         all_urls = [seed_url]
         follow_links_containing = d["follow_links_containing"]
-        handle_js_redirects_with_browser = d.get("handle_js_redirects_with_browser", False)
         ignore_query_strings = d.get("ignore_query_strings", False)
-        if handle_js_redirects_with_browser:
-            browser = webdriver.Firefox() 
+        # Selenium browser
+        if browser_name == "PhantomJS":
+            user_os = platform.system()
+            if user_os == "Darwin":
+                phantomjs_filepath = "phantomjs/phantomjs_mac"
+            elif user_os == "Linux":
+                user_machine = platform.machine()
+                if user_machine == "x86_64":
+                    phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
+            phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
+            browser = webdriver.PhantomJS(executable_path=phantomjs_path)
+        elif browser_name == "Firefox":
+            browser = webdriver.Firefox()
+        elif browser_name == "Chrome":
+            browser = webdriver.Chrome()
+        elif browser_name == "Safari":
+            browser = webdriver.Safari()
+        elif browser_name == "Opera":
+            browser = webdriver.Opera()                                       
+        browser.set_page_load_timeout(request_timeout)        
+        # Regex
         regex_filters = d.get("regex_filters")
         if regex_filters:
             using_regex_filters = True
             regex_filters = [ re.compile(regex_filter) for regex_filter in regex_filters ]
         else:
             using_regex_filters = False
+            
         start_time = datetime.datetime.now()
         print "\nCurrent Time:  %s" % start_time
         crawl_url()

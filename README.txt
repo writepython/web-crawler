@@ -1,3 +1,8 @@
+TO DO
+Get encoding or headers from Selenium and figure out how requests get encoding var (or extra HEAD req w/ requests)
+Selenium at the end.
+
+
 === About ===
 
 - This python web crawler will read in a configuration file containing seed URLs to crawl, and download filtering parameters.  
@@ -24,6 +29,8 @@ request_timeout is a float describing how long to wait in seconds for the server
 
 request_delay is a float describing how long to wait in seconds before making the next request.
 
+browser_name is a string that determines which browser Selenium will employ to find the final URL after HTTP and JS redirects.  The options are "PhantomJS", "Firefox", "Chrome", "Safari", and "Opera".  PhantomJS has the advantage of not actually needing to open a browser window.  I have tested PhantomJS and Firefox.
+
 urls_to_crawl is an array of hashes containing the items url, follow_links_containing, and (optionally) regex_filters.
 
 url is a url string in the style http://www.main.russia.org
@@ -32,13 +39,19 @@ follow_links_containing is a string that determines what links are followed.  Fo
 
 regex_filters is an optional array of Perl-style regular expression patterns.  Files matching any one of the patters will be downloaded.  "\d" means a single digit and "." means any character except the newline character.  Prefix regex stings with an "r" so that the "/" character is interpreted properly, as in: r"/2014/07\d\d/"  http://docs.python.org/2/howto/regex.html#regex-howto
 
+ignore_query_strings is a boolean.  Setting this to True means that when new URLs are discovered, the query strings will be stripped before further processing.  If the resultant URL actually redirects to a URL with a query string, then that will be preserved.
+
 === An Example config.py ===
 
 mimetypes_list = [ 'text/html' ]
 
-file_extensions_list = [ '.asp', '.aspx' ]
+file_extensions_list = [ '.txt' ]
 
 request_timeout = 20
+
+request_delay = 0
+
+browser_name = "PhantomJS"
 
 urls_to_crawl = [
     {
@@ -50,6 +63,7 @@ urls_to_crawl = [
         "url": "http://www.china.com.cn",
         "follow_links_containing": "www.china.com.cn",
         "regex_filters": [ r"/2014-07/\d\d/" ]
+        "ignore_query_strings": True,
     },
     {
         "url": "http://politics.people.com.cn",
