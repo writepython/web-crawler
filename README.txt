@@ -1,7 +1,5 @@
-TO DO
-Get encoding or headers from Selenium and figure out how requests get encoding var (or extra HEAD req w/ requests)
-Selenium at the end.
-
+To Do
+Use Selenium scripts utf8 code
 
 === About ===
 

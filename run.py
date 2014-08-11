@@ -16,20 +16,19 @@ def mkdir_p(path):
             pass
         else: raise
 
-def download_file(current_url, data, encoding):
+def write_file(url, data, encoding):
     """
     Data will either be data from an HTML file or None
     Encoding is the encoding of the data
     """
     if not data:
-        get_response = requests.get(current_url, headers=request_headers, timeout=request_timeout)
-        if get_response.status_code == requests.codes.ok:
-            data = get_response.text
-            encoding = get_response.encoding
-        else:
-            print "Received an invalid GET response"
+        try:
+            url, data = selenium_request(url)
+        except:
+            # Show error message and move on to next URL
+            print "Received an error requesting URL with Selenium: ", current_url
     if data:
-        url_parsed = urlparse.urlsplit(current_url)
+        url_parsed = urlparse.urlsplit(url)
         netloc = url_parsed.netloc
         url_path = url_parsed.path.strip().lstrip("/")
         query_string = url_parsed.query
@@ -56,7 +55,7 @@ def download_file(current_url, data, encoding):
         global files_written
         files_written += 1        
         
-def add_new_urls(current_url, html):
+def add_new_urls(url, html):
     parsed_html = BeautifulSoup(html)
     for tag in parsed_html.findAll('a', href=True):
         href = tag['href'].strip() # Stripping handles <a href=" http...
@@ -68,25 +67,35 @@ def add_new_urls(current_url, html):
                 query_string_index = href.find("?") 
                 if query_string_index != -1:
                     href = href[:query_string_index]
-            href_absolute_url = urlparse.urljoin(current_url, href)
+            href_absolute_url = urlparse.urljoin(url, href)
             if href_absolute_url.startswith('http'): # We don't care about mailto:foo@bar.com etc.
                 if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
-                    new_url = None
-                    for i in range(2):
-                        try:
-                            # Get final URL after HTTP and JS redirects
-                            print "Requesting URL: ", href_absolute_url
-                            browser.get(href_absolute_url)
-                            new_url = browser.current_url
-                        except:
-                            print "Error handling the discovered URL: ", href_absolute_url
-                        else:
-                            break
-                    if new_url:
-                        if new_url not in all_urls:
-                            urls_to_visit.append(new_url)
-                            all_urls.append(new_url)                            
+                    urls_to_visit.append(href_absolute_url)
+                    all_urls.append(href_absolute_url)
 
+def selenium_request(url):
+    "Uses Selenium browser to returns a tuple of (final_url, page_source)"
+    try:
+        # Get final URL after HTTP and JS redirects
+        print "Requesting URL with Selenium: ", url
+        browser.get(url)
+        final_url = browser.current_url
+        if final_url not in all_urls:
+            all_urls.append(final_url)
+        page_source = browser.page_source
+        print "Found final URL: ", final_url
+        return final_url, page_source
+    except:
+        # If we get an error, try one last time
+        print "Requesting URL with Selenium: ", url
+        browser.get(url)
+        final_url = browser.current_url
+        if final_url not in all_urls:
+            all_urls.append(final_url)
+        page_source = browser.page_source
+        print "Found final URL: ", final_url
+        return final_url, page_source
+        
 def crawl_url():
     global errors_encountered
     print "\n* NEW CRAWLING SESSION FOR CONFIG URL: %s *\n" % seed_url
@@ -99,37 +108,41 @@ def crawl_url():
             met_mimetype_criteria = False
             met_file_extension_criteria = False                                        
             print "\nProcessing URL: %s\n" % current_url
+
             # Look for a valid head response from the URL
+            print "HEAD Request of URL: ", current_url
             head_response = requests.head(current_url, allow_redirects=True, headers=request_headers, timeout=request_timeout)
             if not head_response.status_code == requests.codes.ok:
-                print "Received an invalid HEAD response"
+                print "Received an invalid HEAD response for URL: ", current_url
             else:
                 head_content_type = head_response.headers.get('content-type')
+                encoding = head_response.encoding                                    
                 # If we found an HTML file, grab all the links
                 if 'text/html' in head_content_type:
-                    get_response = requests.get(current_url, headers=request_headers, timeout=request_timeout)
-                    if get_response.status_code == requests.codes.ok:
-                        html_data = get_response.text
-                        encoding = get_response.encoding                    
-                        add_new_urls(current_url, html_data)
+                    try:
+                        final_url, html_data = selenium_request(current_url)
+                    except:
+                        # Show error message and move on to next URL
+                        print "Received an error requesting URL with Selenium: ", current_url
+                        continue
                     else:
-                        print "Received an invalid GET response"
-                # Check if we should download files with this mimetype or extension
+                        add_new_urls(final_url, html_data)
+                # Check if we should write files with this mimetype or extension
                 for mimetype in mimetypes_list:
                     if mimetype in head_content_type:
                         met_mimetype_criteria = True
                 if not met_mimetype_criteria:
                     for file_extension in file_extensions_list:
-                        if file_extension in current_url: # This could be swapped for urlsplit(current_url).path...[-1]
+                        if file_extension in final_url: # This could be swapped for urlsplit(final_url).path...[-1]
                             met_file_extension_criteria = True                
-                # Check if we should download this file based on potential regex restrictions, only if it passes the mimetype or extension tests
+                # Check if we should write this file based on potential regex restrictions, only if it passes the mimetype or extension tests
                 if met_mimetype_criteria or met_file_extension_criteria:
                     if not using_regex_filters:
-                        download_file(current_url, html_data, encoding)
+                        write_file(final_url, html_data, encoding)
                     else:
                         for regex_filter in regex_filters:
-                            if regex_filter.search(current_url):
-                                download_file(current_url, html_data, encoding)
+                            if regex_filter.search(final_url):
+                                write_file(final_url, html_data, encoding)
                                 break
             global files_processed
             files_processed += 1
