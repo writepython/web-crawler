@@ -1,5 +1,6 @@
 To Do
-Use Selenium scripts utf8 code. encode before opening file.
+Rerun with .htm
+save state
 
 
 === About ===
@@ -65,7 +66,7 @@ urls_to_crawl = [
     {
         "url": "http://www.china.com.cn",
         "follow_links_containing": "www.china.com.cn",
-        "regex_filters": [ r"/2014-07/\d\d/" ]
+        "regex_filters": [ r"/2014-07/\d\d/" ],
         "ignore_query_strings": True,
     },
     {

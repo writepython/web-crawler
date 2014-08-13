@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 
-from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout, request_delay, browser_name
+from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout, request_delay, use_selenium, browser_name
 
 fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/._?%=-]") # The / char will be split out later
 request_headers = { 'User-Agent': 'Mozilla/5.0' }
@@ -114,7 +114,7 @@ def python_request(url):
         final_url = get_response.url
         if final_url not in all_urls:
             all_urls.append(final_url)
-        page_source = get_respone.text
+        page_source = get_response.text
         print "Found final URL: ", final_url
         return final_url, page_source
     except:
@@ -123,7 +123,7 @@ def python_request(url):
         final_url = get_response.url
         if final_url not in all_urls:
             all_urls.append(final_url)
-        page_source = get_respone.text
+        page_source = get_response.text
         print "Found final URL: ", final_url
         return final_url, page_source    
         
@@ -201,29 +201,29 @@ if __name__ == "__main__":
         follow_links_containing = d["follow_links_containing"]
         ignore_query_strings = d.get("ignore_query_strings", False)
         # Selenium browser
-        if use_selenium:
-            get_request = selenium_request
-        else:
+        if not use_selenium:
             get_request = python_request
-        if browser_name == "PhantomJS":
-            user_os = platform.system()
-            if user_os == "Darwin":
-                phantomjs_filepath = "phantomjs/phantomjs_mac"
-            elif user_os == "Linux":
-                user_machine = platform.machine()
-                if user_machine == "x86_64":
-                    phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
-            phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
-            browser = webdriver.PhantomJS(executable_path=phantomjs_path)
-        elif browser_name == "Firefox":
-            browser = webdriver.Firefox()
-        elif browser_name == "Chrome":
-            browser = webdriver.Chrome()
-        elif browser_name == "Safari":
-            browser = webdriver.Safari()
-        elif browser_name == "Opera":
-            browser = webdriver.Opera()                                       
-        browser.set_page_load_timeout(request_timeout)        
+        else:
+            get_request = selenium_request                
+            if browser_name == "PhantomJS":
+                user_os = platform.system()
+                if user_os == "Darwin":
+                    phantomjs_filepath = "phantomjs/phantomjs_mac"
+                elif user_os == "Linux":
+                    user_machine = platform.machine()
+                    if user_machine == "x86_64":
+                        phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
+                phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
+                browser = webdriver.PhantomJS(executable_path=phantomjs_path)
+            elif browser_name == "Firefox":
+                browser = webdriver.Firefox()
+            elif browser_name == "Chrome":
+                browser = webdriver.Chrome()
+            elif browser_name == "Safari":
+                browser = webdriver.Safari()
+            elif browser_name == "Opera":
+                browser = webdriver.Opera()                                       
+            browser.set_page_load_timeout(request_timeout)        
         # Regex
         regex_filters = d.get("regex_filters")
         if regex_filters:
