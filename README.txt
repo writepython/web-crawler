@@ -1,5 +1,6 @@
 To Do
-Use Selenium scripts utf8 code
+Use Selenium scripts utf8 code. encode before opening file.
+
 
 === About ===
 
@@ -27,7 +28,9 @@ request_timeout is a float describing how long to wait in seconds for the server
 
 request_delay is a float describing how long to wait in seconds before making the next request.
 
-browser_name is a string that determines which browser Selenium will employ to find the final URL after HTTP and JS redirects.  The options are "PhantomJS", "Firefox", "Chrome", "Safari", and "Opera".  PhantomJS has the advantage of not actually needing to open a browser window.  I have tested PhantomJS and Firefox.
+use_selenium is a boolean.  Setting this to True means that Selenium will be used to request pages.
+
+browser_name is a string that determines which browser Selenium will employ to find the final URL after HTTP and JS redirects.  The options are "PhantomJS", "Firefox", "Chrome", "Safari", and "Opera".  The browser must be installed on the computer running the program.  I have included a copy of PhantomJS.  PhantomJS has the advantage of not actually needing to open a browser window.  I have tested with PhantomJS and Firefox, and found Firefox to be the faster of the two.
 
 urls_to_crawl is an array of hashes containing the items url, follow_links_containing, and (optionally) regex_filters.
 
@@ -45,11 +48,13 @@ mimetypes_list = [ 'text/html' ]
 
 file_extensions_list = [ '.txt' ]
 
-request_timeout = 20
+request_timeout = 60
 
 request_delay = 0
 
-browser_name = "PhantomJS"
+use_selenium = True
+
+browser_name = "Firefox"
 
 urls_to_crawl = [
     {

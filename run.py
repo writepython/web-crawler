@@ -19,14 +19,14 @@ def mkdir_p(path):
 def write_file(url, data, encoding):
     """
     Data will either be data from an HTML file or None
-    Encoding is the encoding of the data
+    Encoding is the encoding of the data as specified by the response header.
     """
     if not data:
         try:
-            url, data = selenium_request(url)
+            url, data = get_request(url)
         except:
             # Show error message and move on to next URL
-            print "Received an error requesting URL with Selenium: ", current_url
+            print "Received an error requesting URL: ", url
     if data:
         url_parsed = urlparse.urlsplit(url)
         netloc = url_parsed.netloc
@@ -49,11 +49,20 @@ def write_file(url, data, encoding):
         fs_path = os.path.join( output_dir, fs_path)
         mkdir_p(fs_path)
         filepath = os.path.join(fs_path, filename)
-        print "Writing file: ", filepath
-        with open(filepath, 'w') as f:
-            f.write( data.encode(encoding) )
-        global files_written
-        files_written += 1        
+        encoded_data = None
+        print "Encoding data with encoding %s" % encoding
+        try:
+            encoded_data = data.encode(encoding)
+            print "Could not encode data with encoding %s. Trying UTF-8 instead" % encoding            
+        except:
+            # In case the encoding specified by the web server is wrong, try again with UTF-8
+            encoded_data = data.encode('utf-8')
+        if encoded_data:
+            with open(filepath, 'w') as f:
+                f.write( encoded_data)
+                print "Wrote file: %s" % filepath
+                global files_written
+                files_written += 1        
         
 def add_new_urls(url, html):
     parsed_html = BeautifulSoup(html)
@@ -95,6 +104,28 @@ def selenium_request(url):
         page_source = browser.page_source
         print "Found final URL: ", final_url
         return final_url, page_source
+
+def python_request(url):
+    "Uses Python Requests Library to returns a tuple of (final_url, page_source)"
+    try:
+        # Get final URL after HTTP redirects
+        print "Requesting URL with Python Requests: ", url
+        get_response = requests.get(url, headers=request_headers, timeout=request_timeout)
+        final_url = get_response.url
+        if final_url not in all_urls:
+            all_urls.append(final_url)
+        page_source = get_respone.text
+        print "Found final URL: ", final_url
+        return final_url, page_source
+    except:
+        print "Requesting URL with Python Requests: ", url
+        get_response = requests.get(url, headers=request_headers, timeout=request_timeout)
+        final_url = get_response.url
+        if final_url not in all_urls:
+            all_urls.append(final_url)
+        page_source = get_respone.text
+        print "Found final URL: ", final_url
+        return final_url, page_source    
         
 def crawl_url():
     global errors_encountered
@@ -120,10 +151,10 @@ def crawl_url():
                 # If we found an HTML file, grab all the links
                 if 'text/html' in head_content_type:
                     try:
-                        final_url, html_data = selenium_request(current_url)
+                        final_url, html_data = get_request(current_url)
                     except:
                         # Show error message and move on to next URL
-                        print "Received an error requesting URL with Selenium: ", current_url
+                        print "Received an error requesting URL: ", current_url
                         continue
                     else:
                         add_new_urls(final_url, html_data)
@@ -170,6 +201,10 @@ if __name__ == "__main__":
         follow_links_containing = d["follow_links_containing"]
         ignore_query_strings = d.get("ignore_query_strings", False)
         # Selenium browser
+        if use_selenium:
+            get_request = selenium_request
+        else:
+            get_request = python_request
         if browser_name == "PhantomJS":
             user_os = platform.system()
             if user_os == "Darwin":

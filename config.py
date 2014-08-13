@@ -6,7 +6,8 @@ request_timeout = 60
 
 request_delay = 0
 
-browser_name = "PhantomJS"
+use_selenium = True
+
 browser_name = "Firefox"
 
 urls_to_crawl = [
