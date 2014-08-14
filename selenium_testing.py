@@ -1,4 +1,4 @@
-import os, sys, datetime, traceback, platform
+import os, sys, datetime, traceback, platform, chardet
 from selenium import webdriver
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.ui import WebDriverWait
@@ -12,18 +12,17 @@ urls = [
     ]
 
 try:
-    ## user_os = platform.system()
-    ## if user_os == "Darwin":
-    ##     phantomjs_filepath = "phantomjs/phantomjs_mac"
-    ## elif user_os == "Linux":
-    ##     user_machine = platform.machine()
-    ##     if user_machine == "x86_64":
-    ##         phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
-    ## phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
-    #phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), "phantomjs_linux_64" )
-    #print phantomjs_path
-    browser = webdriver.Firefox()
-    #browser = webdriver.PhantomJS(executable_path=phantomjs_path)
+    user_os = platform.system()
+    if user_os == "Darwin":
+        phantomjs_filepath = "phantomjs/phantomjs_mac"
+    elif user_os == "Linux":
+        user_machine = platform.machine()
+        if user_machine == "x86_64":
+            phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
+    phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
+    print phantomjs_path
+    #browser = webdriver.Firefox()
+    browser = webdriver.PhantomJS(executable_path=phantomjs_path)
     #browser.set_window_size(200, 200)
     browser.set_page_load_timeout(60)
     #browser.set_script_timeout(0.1)
@@ -35,18 +34,31 @@ try:
 
         #body = WebDriverWait(browser, 5).until( expected_conditions.presence_of_element_located((By.TAG_NAME, 'body')) )
         
-        print browser.current_url
-        #print browser.page_source
-    #print "error"
 
-    with open('selenium.txt', 'w') as f:
-        f.write( browser.page_source.encode('utf-8') )
-    print browser.title
+        print browser.current_url
+        u = browser.page_source.encode('utf-8')
+
+        print chardet.detect(u)        
+
+        ## try:
+        ##     with open('selenium_utf8.txt', 'w') as f:
+        ##         f.write( a )
+        ## except:
+        ##     traceback_info = '\n'.join(traceback.format_exception(*(sys.exc_info())))
+        ##     print "*** ERROR PROCESSING: %s ***\nTraceback: %s\n" % ( url, traceback_info )
+
+        ## try:
+        ##     with open('selenium_gbk.txt', 'w') as h:
+        ##         h.write( browser.page_source.decode('gbk') )#, 'replace') )
+        ## except:
+        ##     traceback_info = '\n'.join(traceback.format_exception(*(sys.exc_info())))
+        ##     print "*** ERROR PROCESSING: %s ***\nTraceback: %s\n" % ( url, traceback_info )        
     
     #print browser.execute_script("return window;")
     end_time = datetime.datetime.now()
 
     print "\nStart:  %s\nFinish: %s\n" % (start_time, end_time)
+
 except:
     try:
         traceback_info = '\n'.join(traceback.format_exception(*(sys.exc_info())))

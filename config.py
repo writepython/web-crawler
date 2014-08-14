@@ -1,14 +1,14 @@
 mimetypes_list = [ ]
 
-file_extensions_list = [ '.html', '.htm' ]
+file_extensions_list = [ '.html' ]
 
 request_timeout = 60
 
 request_delay = 0
 
-use_selenium = False
+use_selenium = True
 
-browser_name = "Firefox"
+browser_name = "PhantomJS"
 
 urls_to_crawl = [
     {

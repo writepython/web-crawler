@@ -1,7 +1,8 @@
-To Do
-Rerun with .htm
-save state
+=== To Do ===
 
+FirefoxProfile firefoxProfile = new ProfilesIni().getProfile("web");
+firefoxProfile.setPreference("webdriver.load.strategy", "fast");
+save execution state
 
 === About ===
 
