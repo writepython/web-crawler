@@ -213,6 +213,8 @@ if __name__ == "__main__":
                     user_machine = platform.machine()
                     if user_machine == "x86_64":
                         phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
+                    else:
+                        phantomjs_filepath = "phantomjs/phantomjs_linux_i686"        
                 phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
                 browser = webdriver.PhantomJS(executable_path=phantomjs_path)
             elif browser_name == "Firefox":
