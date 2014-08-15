@@ -6,7 +6,7 @@ request_timeout = 60
 
 request_delay = 0
 
-use_selenium = False
+use_selenium = True
 
 browser_name = "PhantomJS"
 
