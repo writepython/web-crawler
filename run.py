@@ -5,9 +5,7 @@ from selenium import webdriver
 
 from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout, request_delay, use_selenium, browser_name
 
-fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/._?%=-]") # The / char will be split out later
 request_headers = { 'User-Agent': 'Mozilla/5.0' }
-
         
 def add_new_urls(url, html):
     parsed_html = BeautifulSoup(html)
@@ -26,7 +24,6 @@ def add_new_urls(url, html):
                 if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
                     urls_to_visit.append(href_absolute_url)
                     all_urls.append(href_absolute_url)
-
         
 def crawl_url():
     global errors_encountered
@@ -70,10 +67,14 @@ def crawl_url():
                 # Check if we should write this file based on potential regex restrictions, only if it passes the mimetype or extension tests
                 if met_mimetype_criteria or met_file_extension_criteria:
                     if not using_regex_filters:
+                        if not html_data:
+                            final_url, html_data = get_request(current_url)
                         write_file(final_url, html_data, encoding)
                     else:
                         for regex_filter in regex_filters:
                             if regex_filter.search(final_url):
+                                if not html_data:
+                                    final_url, html_data = get_request(current_url)                                
                                 write_file(final_url, html_data, encoding)
                                 break
             global files_processed

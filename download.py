@@ -17,10 +17,10 @@ def main(argv):
         print usage_message
         sys.exit(2)
     for opt, arg in opts:
-    if opt == "-i":
-                input_file = arg
-            if opt == "-o":
-                output_dir = arg
+        if opt == "-i":
+            input_file = arg
+        if opt == "-o":
+            output_dir = arg
     if not input_file or not output_dir:
         print usage_message
         sys.exit(2)
@@ -35,7 +35,9 @@ def main(argv):
     for url in urls:
         url = url.strip()
         final_url, data, encoding = get_response_data(url)
-        write_file(final_url, data, encoding, output_dir)
+        filepath = get_filepath(final_url, encoding, output_dir)
+        encoded_data = get_encoded_data(data, encoding)
+        write_file(encoded_data, filepath)
     
 if __name__ == "__main__":
     main(sys.argv[1:])    
