@@ -1,7 +1,7 @@
-import os, re, errno, urlparse
+import os, re, errno, urlparse, platform
+from selenium import webdriver
 
-fs_path_bad_chars_re = re.compile(r"[^0-9a-zA-Z/._?%=-]") # The / char will be split out later
-request_headers = { 'User-Agent': 'Mozilla/5.0' }
+FS_PATH_BAD_CHARS_RE = re.compile(r"[^0-9a-zA-Z/._?%=-]") # The / char will be split out later
 
 def mkdir_p(path):
     """ Emulates UNIX mkdir -p """
@@ -30,7 +30,7 @@ def get_filepath(url, encoding, output_dir):
         if url_path.endswith("/"): 
             url_path = url_path + "root" 
         url_path = netloc + "/" + url_path
-        url_path_sanitized = fs_path_bad_chars_re.sub('_', url_path)
+        url_path_sanitized = FS_PATH_BAD_CHARS_RE.sub('_', url_path)
         url_path_list = url_path_sanitized.split("/")
         filename = url_path_list.pop()
         filename = filename[:240] + "_" + encoding + ".file" # Most systems have a 255 char limit on filenames
@@ -42,69 +42,37 @@ def get_filepath(url, encoding, output_dir):
 
 def get_encoded_data(data, encoding):
     encoded_data = None
-    print "Encoding data with encoding %s" % encoding
-    try:
-        encoded_data = data.encode(encoding)
-    except:
-        print "Could not encode data with encoding %s. Trying UTF-8 instead" % encoding
+    if encoding:
+        print "Encoding data with encoding: %s" % encoding
+        try:
+            encoded_data = data.encode(encoding)
+        except:
+            print "Could not encode data with encoding: %s. Trying UTF-8 instead." % encoding
+    if not encoded_data:
         encoding = 'utf-8'
         encoded_data = data.encode('utf-8')
     return encoded_data, encoding
-    
-def write_file(data, filepath):
-    with open(filepath, 'w') as f:
-        f.write(data)
-        print "Wrote file: %s" % filepath
 
-def get_response_data(url):
-    
-def selenium_request(url):
-    "Uses Selenium browser to returns a tuple of (final_url, page_source)"
-    try:
-        # Get final URL after HTTP and JS redirects
-        print "Requesting URL with Selenium: ", url
-        browser.get(url)
-        final_url = browser.current_url
-        if final_url not in all_urls:
-            all_urls.append(final_url)
-        page_source = browser.page_source
-        print "Found final URL: ", final_url
-        return final_url, page_source
-    except:
-        # If we get an error, try one last time
-        print "Requesting URL with Selenium: ", url
-        browser.get(url)
-        final_url = browser.current_url
-        if final_url not in all_urls:
-            all_urls.append(final_url)
-        page_source = browser.page_source
-        print "Found final URL: ", final_url
-        return final_url, page_source
-
-def python_request(url):
-    "Uses Python Requests Library to returns a tuple of (final_url, page_source)"
-    try:
-        # Get final URL after HTTP redirects
-        print "Requesting URL with Python Requests: ", url
-        get_response = requests.get(url, headers=request_headers, timeout=request_timeout)
-        final_url = get_response.url
-        if final_url not in all_urls:
-            all_urls.append(final_url)
-        page_source = get_response.text
-        print "Found final URL: ", final_url
-        return final_url, page_source
-    except:
-        print "Requesting URL with Python Requests: ", url
-        get_response = requests.get(url, headers=request_headers, timeout=request_timeout)
-        final_url = get_response.url
-        if final_url not in all_urls:
-            all_urls.append(final_url)
-        page_source = get_response.text
-        print "Found final URL: ", final_url
-        return final_url, page_source    
-                
-#############
-
-
-                global files_written
-                files_written += 1                
+def get_selenium_browser(browser_name="PhantomJS", request_timeout=60):
+    if browser_name == "PhantomJS":
+        user_os = platform.system()
+        if user_os == "Darwin":
+            phantomjs_filepath = "phantomjs/phantomjs_mac"
+        elif user_os == "Linux":
+            user_machine = platform.machine()
+            if user_machine == "x86_64":
+                phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
+            else:
+                phantomjs_filepath = "phantomjs/phantomjs_linux_i686"        
+        phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
+        browser = webdriver.PhantomJS(executable_path=phantomjs_path)
+    elif browser_name == "Firefox":
+        browser = webdriver.Firefox()
+    elif browser_name == "Chrome":
+        browser = webdriver.Chrome()
+    elif browser_name == "Safari":
+        browser = webdriver.Safari()
+    elif browser_name == "Opera":
+        browser = webdriver.Opera()                                       
+    browser.set_page_load_timeout(request_timeout)        
+    return browser

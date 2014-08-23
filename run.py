@@ -1,13 +1,15 @@
-import os, re, sys, errno, time, traceback, datetime, string, urlparse, mimetypes, platform
+import os, re, sys, getopt, errno, time, traceback, datetime, string, urlparse, mimetypes, platform
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
+from functions import mkdir_p, get_selenium_browser, get_filepath, get_encoded_data
 
-from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_timeout, request_delay, use_selenium, browser_name
+from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_delay
 
-request_headers = { 'User-Agent': 'Mozilla/5.0' }
-        
+USAGE_MESSAGE = 'Usage: run.py -o <output_dir>'
+REQUEST_HEADERS = { 'User-Agent': 'Mozilla/5.0' }
+
 def add_new_urls(url, html):
+    print "Adding new URLs from page source of URL: %s" % url
     parsed_html = BeautifulSoup(html)
     for tag in parsed_html.findAll('a', href=True):
         href = tag['href'].strip() # Stripping handles <a href=" http...
@@ -33,50 +35,80 @@ def crawl_url():
         current_url = urls_to_visit.pop(0)
         try:
             time.sleep(request_delay)
-            html_data = None
+            page_source = None
             met_mimetype_criteria = False
-            met_file_extension_criteria = False                                        
+            met_file_extension_criteria = False
+            write_file = False                                        
             print "\nProcessing URL: %s\n" % current_url
-
             # Look for a valid head response from the URL
             print "HEAD Request of URL: ", current_url
-            head_response = requests.head(current_url, allow_redirects=True, headers=request_headers, timeout=request_timeout)
+            head_response = requests.head(current_url, allow_redirects=True, headers=REQUEST_HEADERS, timeout=60)
             if not head_response.status_code == requests.codes.ok:
                 print "Received an invalid HEAD response for URL: ", current_url
             else:
-                head_content_type = head_response.headers.get('content-type')
-                encoding = head_response.encoding                                    
+                content_type = head_response.headers.get('content-type')
+                encoding = head_response.encoding
+                final_url = head_response.url                
                 # If we found an HTML file, grab all the links
-                if 'text/html' in head_content_type:
-                    try:
-                        final_url, html_data = get_request(current_url)
-                    except:
-                        # Show error message and move on to next URL
-                        print "Received an error requesting URL: ", current_url
-                        continue
-                    else:
-                        add_new_urls(final_url, html_data)
+                if 'text/html' in content_type:
+                    print "Requesting URL with Python Requests: ", current_url
+                    get_response = requests.get(current_url, headers=REQUEST_HEADERS, timeout=60)
+                    content_type = get_response.headers.get('content-type')
+                    encoding = get_response.encoding
+                    page_source = get_response.text
+                    final_url = get_response.url
+                    if 'text/html' in content_type and not "<body" in page_source:
+                        print "No <body> tag found in page source. Requesting URL with Selenium: ", final_url
+                        try:
+                            browser.get(final_url)
+                            page_source = browser.page_source                    
+                        except:
+                            print "First Selenium request failed. Trying one last time."
+                            browser.get(final_url)
+                            page_source = browser.page_source                    
+                        else:
+                            if 'text/html' in content_type and not "<body" in page_source:
+                                print "No <body> tag found in page source. Requesting URL with Selenium one last time."                        
+                                browser.get(final_url)
+                                page_source = browser.page_source                                            
+                        final_url = browser.current_url
+                    add_new_urls(final_url, page_source)
                 # Check if we should write files with this mimetype or extension
                 for mimetype in mimetypes_list:
-                    if mimetype in head_content_type:
+                    if mimetype in content_type:
                         met_mimetype_criteria = True
                 if not met_mimetype_criteria:
+                    url_parsed = urlparse.urlsplit(final_url)
+                    url_path = url_parsed.path.strip()
                     for file_extension in file_extensions_list:
-                        if file_extension in final_url: # This could be swapped for urlsplit(final_url).path...[-1]
+                        if url_path.endswith(file_extension):
                             met_file_extension_criteria = True                
                 # Check if we should write this file based on potential regex restrictions, only if it passes the mimetype or extension tests
                 if met_mimetype_criteria or met_file_extension_criteria:
                     if not using_regex_filters:
-                        if not html_data:
-                            final_url, html_data = get_request(current_url)
-                        write_file(final_url, html_data, encoding)
+                        write_file = True
                     else:
                         for regex_filter in regex_filters:
                             if regex_filter.search(final_url):
-                                if not html_data:
-                                    final_url, html_data = get_request(current_url)                                
-                                write_file(final_url, html_data, encoding)
+                                write_file = True
                                 break
+                # Write a file if we need to
+                if write_file:
+                    print "Need to write file"
+                    if not page_source:
+                        print "Requesting URL with Python Requests: ", final_url
+                        get_response = requests.get(final_url, headers=REQUEST_HEADERS, timeout=60)
+                        encoding = get_response.encoding
+                        page_source = get_response.text
+                        final_url = get_response.url
+                    encoded_data, encoding_used = get_encoded_data(page_source, encoding)            
+                    filepath = get_filepath(final_url, encoding_used, output_dir)
+                    with open(filepath, 'w') as f:
+                        f.write(encoded_data)
+                    print "Wrote file: %s with encoding: %s" % (filepath, encoding_used)
+                    global files_written
+                    files_written += 1
+
             global files_processed
             files_processed += 1
             print "Files Found: %d  Processed: %d  Remaining: %d  Written: %d  Operational Errors: %d" % ( len(all_urls), files_processed, len(urls_to_visit), files_written, errors_encountered )
@@ -87,12 +119,28 @@ def crawl_url():
             except:
                 traceback_info = ''
             print "*** ERROR PROCESSING: %s ***\nTraceback: %s\n" % ( current_url, traceback_info )
-            
+
 if __name__ == "__main__":
-    output_dir = os.path.join( os.getcwd(), "output" )
-    if not os.path.exists(output_dir):
+    argv = sys.argv[1:]
+    # Find or create output directory
+    output_dir = None    
+    try:
+        opts, args = getopt.getopt(argv, "o:" )
+    except getopt.GetoptError:
+        print USAGE_MESSAGE
+        sys.exit(2)
+    for opt, arg in opts:
+        if opt == "-o":
+            output_dir = arg
+    if not output_dir:
+        print USAGE_MESSAGE
+        sys.exit(2)
+    if os.path.isdir(output_dir):
+        print "Found directory: %s" % output_dir
+    else:
         mkdir_p(output_dir)
-    
+        print "Created directory: %s" % output_dir
+    # Get URLs from config
     for d in urls_to_crawl:
         files_processed = 0
         files_written = 0            
@@ -103,31 +151,7 @@ if __name__ == "__main__":
         follow_links_containing = d["follow_links_containing"]
         ignore_query_strings = d.get("ignore_query_strings", False)
         # Selenium browser
-        if not use_selenium:
-            get_request = python_request
-        else:
-            get_request = selenium_request                
-            if browser_name == "PhantomJS":
-                user_os = platform.system()
-                if user_os == "Darwin":
-                    phantomjs_filepath = "phantomjs/phantomjs_mac"
-                elif user_os == "Linux":
-                    user_machine = platform.machine()
-                    if user_machine == "x86_64":
-                        phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
-                    else:
-                        phantomjs_filepath = "phantomjs/phantomjs_linux_i686"        
-                phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
-                browser = webdriver.PhantomJS(executable_path=phantomjs_path)
-            elif browser_name == "Firefox":
-                browser = webdriver.Firefox()
-            elif browser_name == "Chrome":
-                browser = webdriver.Chrome()
-            elif browser_name == "Safari":
-                browser = webdriver.Safari()
-            elif browser_name == "Opera":
-                browser = webdriver.Opera()                                       
-            browser.set_page_load_timeout(request_timeout)        
+        browser = get_selenium_browser()        
         # Regex
         regex_filters = d.get("regex_filters")
         if regex_filters:

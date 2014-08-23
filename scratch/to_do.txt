@@ -1,0 +1,3 @@
+
+FirefoxProfile firefoxProfile = new ProfilesIni().getProfile("web");
+firefoxProfile.setPreference("webdriver.load.strategy", "fast");

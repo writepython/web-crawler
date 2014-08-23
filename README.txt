@@ -1,22 +1,21 @@
-=== To Do ===
-
-FirefoxProfile firefoxProfile = new ProfilesIni().getProfile("web");
-firefoxProfile.setPreference("webdriver.load.strategy", "fast");
-save execution state
 
 === About ===
 
 - This python web crawler will read in a configuration file containing seed URLs to crawl, and download filtering parameters.  
-- A directory called "output" will be created inside the current working directory (the directory from which the script was invoked).
 - The program will then crawl each seed URL in succession and add any subsequently found URLs to a queue of URLs to visit.
 - As each URL is visited, if it satisfies the given filtering parameters, it will be downloaded while maintaining the directory structure of the website.
 - The value of URLs to visit will thus grow initially, round off when no new URLs are being discovered, and eventually shrink down to zero, at which point the program will move on to the next seed URL, or exit if there are no more URLs to process.
+- Pages that return only Javascript with a text/html mimetype will be requested again with Selenium using the PhantomJS browser.
+- Additional functionality is available to handle an input file containing a list of files to download.
 
-=== Usage ===
+=== RUN.PY Usage ===
 
-1. cd web-crawler-master
-2. Edit config.py (Explanation below)
-3. python run.py
+Edit config.py (Explanation below)
+python run.py -o <output_dir>
+
+=== DOWNLOAD.PY Usage ===
+
+python download.py -i <input_file> -o <output_dir>
 
 === Config.py Variables ===
 
@@ -26,13 +25,7 @@ file_extensions_list is an array of file extensions that determines which files 
 
 *Note: It will take less time to process each URL if one or the other of the above are used rather than both.
 
-request_timeout is a float describing how long to wait in seconds for the server to issue a response for each URL.
-
 request_delay is a float describing how long to wait in seconds before making the next request.
-
-use_selenium is a boolean.  Setting this to True means that Selenium will be used to request pages.
-
-browser_name is a string that determines which browser Selenium will employ to find the final URL after HTTP and JS redirects.  The options are "PhantomJS", "Firefox", "Chrome", "Safari", and "Opera".  The browser must be installed on the computer running the program.  I have included a copy of PhantomJS.  PhantomJS has the advantage of not actually needing to open a browser window.  I have tested with PhantomJS and Firefox, and found Firefox to be the faster of the two.
 
 urls_to_crawl is an array of hashes containing the items url, follow_links_containing, and (optionally) regex_filters.
 
@@ -50,13 +43,7 @@ mimetypes_list = [ 'text/html' ]
 
 file_extensions_list = [ '.txt' ]
 
-request_timeout = 60
-
 request_delay = 0
-
-use_selenium = True
-
-browser_name = "Firefox"
 
 urls_to_crawl = [
     {

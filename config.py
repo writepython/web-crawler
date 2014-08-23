@@ -1,20 +1,13 @@
 mimetypes_list = [ ]
 
-file_extensions_list = [ '.html' ]
-
-request_timeout = 60
+file_extensions_list = [ '.txt' ]
 
 request_delay = 0
 
-use_selenium = True
-
-browser_name = "PhantomJS"
-
 urls_to_crawl = [
     {
-        "url": "http://www.cuyoo.com/",
-        "follow_links_containing": "www.cuyoo.com",
-        "regex_filters": [ r"/article" ],
+        "url": "http://www.rfc-editor.org/",
+        "follow_links_containing": "www.rfc-editor.org",
         "ignore_query_strings": True,
     },
 ]
