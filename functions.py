@@ -20,11 +20,14 @@ def get_filepath(url, encoding, output_dir):
     url_parsed = urlparse.urlsplit(url)
     netloc = url_parsed.netloc
     url_path = url_parsed.path.strip().lstrip("/")
+    file_extension = os.path.splitext(url_path)[1]
+    if not file_extension:
+        file_extension = '.file'
     query_string = url_parsed.query
     if query_string:
         url_path = url_path + '?' + query_string
     if url_path == "":
-        filename = "root_" + encoding + ".file"
+        filename = "root_" + encoding + file_extension
         fs_path = netloc
     else:
         if url_path.endswith("/"): 
@@ -33,7 +36,7 @@ def get_filepath(url, encoding, output_dir):
         url_path_sanitized = FS_PATH_BAD_CHARS_RE.sub('_', url_path)
         url_path_list = url_path_sanitized.split("/")
         filename = url_path_list.pop()
-        filename = filename[:240] + "_" + encoding + ".file" # Most systems have a 255 char limit on filenames
+        filename = filename[:240] + "_" + encoding + file_extension # Most systems have a 255 char limit on filenames
         fs_path = "/".join(url_path_list)            
     fs_path = os.path.join( output_dir, fs_path)
     mkdir_p(fs_path)
