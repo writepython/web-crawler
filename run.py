@@ -57,8 +57,8 @@ def crawl_url():
                     encoding = get_response.encoding
                     page_source = get_response.text
                     final_url = get_response.url
-                    if 'text/html' in content_type and not "<body" in page_source:
-                        print "No <body> tag found in page source. Requesting URL with Selenium: ", final_url
+                    if force_javascript_execution or ('text/html' in content_type and not "<body" in page_source):
+                        print "Requesting URL with Selenium: ", final_url
                         try:
                             browser.get(final_url)
                             page_source = browser.page_source                    
@@ -150,6 +150,7 @@ if __name__ == "__main__":
         all_urls = [seed_url]
         follow_links_containing = d["follow_links_containing"]
         ignore_query_strings = d.get("ignore_query_strings", False)
+        force_javascript_execution = d.get("force_javascript_execution", False)
         # Selenium browser
         browser = get_selenium_browser()        
         # Regex
