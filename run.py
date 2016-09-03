@@ -104,7 +104,7 @@ def crawl_url():
                         print "Writing binary file: ", final_url
                         encoding_used = 'binary'
                         filepath = get_filepath(final_url, encoding_used, output_dir)                        
-                        os.system( "wget -o %s %s" % (filepath , final_url) )
+                        os.system( "curl -o %s %s" % (filepath , final_url) )
                     else:
                         if not page_source:
                             print "Requesting URL with Python Requests: ", final_url

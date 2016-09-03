@@ -8,6 +8,10 @@
 - Pages that return only Javascript with a text/html mimetype will be requested again with Selenium using the PhantomJS browser.
 - Additional functionality is available to handle an input file containing a list of files to download.
 
+=== Requirements ===
+
+Curl for downloading binary files
+
 === RUN.PY Usage ===
 
 Edit config.py (Explanation below)
@@ -20,6 +24,8 @@ python download.py -i <input_file> -o <output_dir>
 === Config.py Variables ===
 
 mimetypes_list is an array of mimetypes that determines which files will be downloaded, provided they pass the regular expression filters.
+
+binary_mimetypes_list is an array of mimetypes that determines which files will be downloaded as binary files using Curl, provided they pass the regular expression filters.
 
 file_extensions_list is an array of file extensions that determines which files will be downloaded, provided they pass the regular expression filters.
 
@@ -40,6 +46,8 @@ ignore_query_strings is a boolean.  Setting this to True means that when new URL
 === An Example config.py ===
 
 mimetypes_list = [ 'text/html' ]
+
+binary_mimetypes_list = [ 'pdf', 'video', 'audio', 'image' ]
 
 file_extensions_list = [ '.txt' ]
 
