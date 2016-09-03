@@ -3,7 +3,7 @@ import requests
 from bs4 import BeautifulSoup
 from functions import mkdir_p, get_selenium_browser, get_filepath, get_encoded_data
 
-from config import urls_to_crawl, file_extensions_list, mimetypes_list, request_delay
+from config import urls_to_crawl, file_extensions_list, mimetypes_list, binary_mimetypes_list, request_delay
 
 USAGE_MESSAGE = 'Usage: run.py -o <output_dir>'
 REQUEST_HEADERS = { 'User-Agent': 'Mozilla/5.0' }
@@ -38,7 +38,8 @@ def crawl_url():
             page_source = None
             met_mimetype_criteria = False
             met_file_extension_criteria = False
-            write_file = False                                        
+            write_file = False
+            write_binary = False                                                    
             print "\nProcessing URL: %s\n" % current_url
             # Look for a valid head response from the URL
             print "HEAD Request of URL: ", current_url
@@ -74,7 +75,7 @@ def crawl_url():
                         final_url = browser.current_url
                     add_new_urls(final_url, page_source)
                 # Check if we should write files with this mimetype or extension
-                for mimetype in mimetypes_list:
+                for mimetype in mimetypes_list + binary_mimetypes_list:
                     if mimetype in content_type:
                         met_mimetype_criteria = True
                 if not met_mimetype_criteria:
@@ -95,16 +96,26 @@ def crawl_url():
                 # Write a file if we need to
                 if write_file:
                     print "Need to write file"
-                    if not page_source:
-                        print "Requesting URL with Python Requests: ", final_url
-                        get_response = requests.get(final_url, headers=REQUEST_HEADERS, timeout=60)
-                        encoding = get_response.encoding
-                        page_source = get_response.text
-                        final_url = get_response.url
-                    encoded_data, encoding_used = get_encoded_data(page_source, encoding)            
-                    filepath = get_filepath(final_url, encoding_used, output_dir)
-                    with open(filepath, 'w') as f:
-                        f.write(encoded_data)
+                    for mimetype in binary_mimetypes_list:
+                        if mimetype in content_type:
+                            write_binary = True
+                            break
+                    if write_binary:
+                        print "Writing binary file: ", final_url
+                        encoding_used = 'binary'
+                        filepath = get_filepath(final_url, encoding_used, output_dir)                        
+                        os.system( "wget -o %s %s" % (filepath , final_url) )
+                    else:
+                        if not page_source:
+                            print "Requesting URL with Python Requests: ", final_url
+                            get_response = requests.get(final_url, headers=REQUEST_HEADERS, timeout=60)
+                            encoding = get_response.encoding
+                            page_source = get_response.text
+                            final_url = get_response.url
+                        encoded_data, encoding_used = get_encoded_data(page_source, encoding)            
+                        filepath = get_filepath(final_url, encoding_used, output_dir)
+                        with open(filepath, 'w') as f:
+                            f.write(encoded_data)
                     print "Wrote file: %s with encoding: %s" % (filepath, encoding_used)
                     global files_written
                     files_written += 1
