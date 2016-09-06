@@ -64,9 +64,9 @@ def get_selenium_browser(browser_name="PhantomJS", request_timeout=60):
         elif user_os == "Linux":
             user_machine = platform.machine()
             if user_machine == "x86_64":
-                phantomjs_filepath = "phantomjs/phantomjs_linux_64"        
+                phantomjs_filepath = "phantomjs/phantomjs_linux_64_1.9.7"        
             else:
-                phantomjs_filepath = "phantomjs/phantomjs_linux_i686"        
+                phantomjs_filepath = "phantomjs/phantomjs_linux_i686_1.9.7"        
         phantomjs_path = os.path.join( os.path.dirname(os.path.realpath(__file__)), phantomjs_filepath )
         browser = webdriver.PhantomJS(executable_path=phantomjs_path)
     elif browser_name == "Firefox":
