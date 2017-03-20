@@ -12,7 +12,9 @@ ignore_query_strings = False
 ignore_anchors = False
 
 def add_contact_info(seed_url, html):
+    print type(html)
     email_addresses = re.findall(EMAIL_REGEX, html)
+    print email_addresses
     
 def get_preprocessed_url(url):
     # Check if twitter, last.fm and others for an about page
@@ -22,8 +24,9 @@ def get_preprocessed_url(url):
         url = urlparse.urljoin(url, 'about')
     return url
 
-def add_new_urls(url, parsed_html):
+def add_new_urls(url, page_source):
     print "Adding new URLs from page source of URL: %s" % url
+    parsed_html = BeautifulSoup(page_source)
     for tag in parsed_html.findAll('a', href=True):
         href = tag['href'].strip() # Stripping handles <a href=" http...
         if ignore_anchors:
@@ -74,10 +77,9 @@ def crawl_url(seed_url):
                             contact_info_dict[seed_url]['final_url_hostname'] = final_url_hostname                            
                         page_source = get_response.text
                         if page_source:
-                            parsed_html = BeautifulSoup(page_source)
-                            add_contact_info(seed_url, parsed_html)
+                            add_contact_info(seed_url, page_source)
                             if contact_info_dict[seed_url]['final_url_hostname'] in final_url:
-                                add_new_urls(final_url, parsed_html)                    
+                                add_new_urls(final_url, page_source)                    
 
             global files_processed
             files_processed += 1
