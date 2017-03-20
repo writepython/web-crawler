@@ -5,25 +5,31 @@ from functions import mkdir_p, get_filepath, get_encoded_data
 
 USAGE_MESSAGE = 'Usage: update_contact_info.py -i <input_file> -o <output_dir>'
 REQUEST_HEADERS = { 'User-Agent': 'Mozilla/5.0' }
-LEAF_URL_STRINGS = ['wikipedia.org', 'facebook.com', 'twitter.com', 'last.fm']
+EMAIL_REGEX = re.compile(r"[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]+")
 
 contact_info_dict = {}
 ignore_query_strings = False
+ignore_anchors = False
 
-def add_contact_info(url, parsed_html):
-
-def need_to_add_new_urls(current_url, final_url, final_url_parsed):
-                        add_new_urls(final_url, parsed_html)                    
-
-                    
+def add_contact_info(seed_url, html):
+    email_addresses = re.findall(EMAIL_REGEX, html)
+    
+def get_preprocessed_url(url):
+    # Check if twitter, last.fm and others for an about page
+    if 'facebook.com' in url and not 'about' in url:
+        if not url.endswith('/'):
+            url = '%s/' % url
+        url = urlparse.urljoin(url, 'about')
+    return url
 
 def add_new_urls(url, parsed_html):
     print "Adding new URLs from page source of URL: %s" % url
     for tag in parsed_html.findAll('a', href=True):
         href = tag['href'].strip() # Stripping handles <a href=" http...
-        anchor_index = href.find("#") 
-        if anchor_index != -1:
-            href = href[:anchor_index] # We don't care about anchors
+        if ignore_anchors:
+            anchor_index = href.find("#") 
+            if anchor_index != -1:
+                href = href[:anchor_index] # We don't care about anchors
         if href:
             if ignore_query_strings:
                 query_string_index = href.find("?") 
@@ -31,22 +37,22 @@ def add_new_urls(url, parsed_html):
                     href = href[:query_string_index]
             href_absolute_url = urlparse.urljoin(url, href)
             if href_absolute_url.startswith('http'): # We don't care about mailto:foo@bar.com etc.
-                if follow_links_containing in href_absolute_url and href_absolute_url not in all_urls:
+                if href_absolute_url not in all_urls:
                     urls_to_visit.append(href_absolute_url)
                     all_urls.append(href_absolute_url)
         
 def crawl_url(seed_url):
     global errors_encountered
     print "\n* NEW CRAWLING SESSION FOR URL: %s *\n" % seed_url
-    contact_info_dict['seed_url'] = { 'final_url': '', 'final_url_hostname': '', 'email': [], 'phone': [], 'twitter': [] }
+    contact_info_dict[seed_url] = { 'final_url': '', 'final_url_hostname': '', 'email': [], 'phone': [], 'twitter': [] }
     is_seed_url = True
     
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
         try:
             # time.sleep(request_delay)
-            page_source = None
             print "\nProcessing URL: %s\n" % current_url
+            current_url = get_preprocessed_url(current_url)
             # Look for a valid head response from the URL
             print "HEAD Request of URL: ", current_url
             head_response = requests.head(current_url, allow_redirects=True, headers=REQUEST_HEADERS, timeout=60)
@@ -60,17 +66,18 @@ def crawl_url(seed_url):
                     get_response = requests.get(current_url, headers=REQUEST_HEADERS, timeout=60)
                     content_type = get_response.headers.get('content-type')
                     if 'text/html' in content_type:
-                        final_url = head_response.url
+                        final_url = get_response.url
                         final_url_parsed = urlparse.urlsplit(final_url)
                         final_url_hostname = final_url_parsed.hostname
                         if is_seed_url:
                             contact_info_dict[seed_url]['final_url'] = final_url
                             contact_info_dict[seed_url]['final_url_hostname'] = final_url_hostname                            
                         page_source = get_response.text
-                        parsed_html = BeautifulSoup(html)
-                        add_contact_info(seed_url, parsed_html)
-                        if need_to_add_new_urls(seed_url, final_url):
-                            add_new_urls(final_url, parsed_html)                    
+                        if page_source:
+                            parsed_html = BeautifulSoup(page_source)
+                            add_contact_info(seed_url, parsed_html)
+                            if contact_info_dict[seed_url]['final_url_hostname'] in final_url:
+                                add_new_urls(final_url, parsed_html)                    
 
             global files_processed
             files_processed += 1
@@ -88,7 +95,6 @@ if __name__ == "__main__":
     # Find or create output directory
     output_dir = None
     output_dir = None
-    contact_dict
     try:
         opts, args = getopt.getopt(argv, "i:o:" )
     except getopt.GetoptError:
@@ -122,7 +128,7 @@ if __name__ == "__main__":
 
         start_time = datetime.datetime.now()
         print "\nCurrent Time:  %s" % start_time
-        crawl_url()
+        crawl_url(url)
         end_time = datetime.datetime.now()
         print contact_info_dict
         print "\nStart:  %s\nFinish: %s\n" % (start_time, end_time)
