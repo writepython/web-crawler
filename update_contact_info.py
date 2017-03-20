@@ -3,14 +3,20 @@ import requests
 from bs4 import BeautifulSoup
 from functions import mkdir_p, get_filepath, get_encoded_data
 
-from config import urls_to_crawl, file_extensions_list, mimetypes_list, binary_mimetypes_list, request_delay
-
 USAGE_MESSAGE = 'Usage: update_contact_info.py -i <input_file> -o <output_dir>'
 REQUEST_HEADERS = { 'User-Agent': 'Mozilla/5.0' }
 LEAF_URL_STRINGS = ['wikipedia.org', 'facebook.com', 'twitter.com', 'last.fm']
 
+contact_info_dict = {}
+ignore_query_strings = False
+
 def add_contact_info(url, parsed_html):
-    
+
+def need_to_add_new_urls(current_url, final_url, final_url_parsed):
+                        add_new_urls(final_url, parsed_html)                    
+
+                    
+
 def add_new_urls(url, parsed_html):
     print "Adding new URLs from page source of URL: %s" % url
     for tag in parsed_html.findAll('a', href=True):
@@ -29,19 +35,17 @@ def add_new_urls(url, parsed_html):
                     urls_to_visit.append(href_absolute_url)
                     all_urls.append(href_absolute_url)
         
-def crawl_url():
+def crawl_url(seed_url):
     global errors_encountered
-    print "\n* NEW CRAWLING SESSION FOR CONFIG URL: %s *\n" % seed_url
-
+    print "\n* NEW CRAWLING SESSION FOR URL: %s *\n" % seed_url
+    contact_info_dict['seed_url'] = { 'final_url': '', 'final_url_hostname': '', 'email': [], 'phone': [], 'twitter': [] }
+    is_seed_url = True
+    
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
         try:
-            time.sleep(request_delay)
+            # time.sleep(request_delay)
             page_source = None
-            met_mimetype_criteria = False
-            met_file_extension_criteria = False
-            write_file = False
-            write_binary = False                                                    
             print "\nProcessing URL: %s\n" % current_url
             # Look for a valid head response from the URL
             print "HEAD Request of URL: ", current_url
@@ -49,25 +53,24 @@ def crawl_url():
             if not head_response.status_code == requests.codes.ok:
                 print "Received an invalid HEAD response for URL: ", current_url
             else:
-                content_type = head_response.headers.get('content-type')
-                encoding = head_response.encoding
-                final_url = head_response.url                
-                # If we found an HTML file, grab all the links
+                content_type = head_response.headers.get('content-type')                    
+                # If we found an HTML file, grab all the links and contact info
                 if 'text/html' in content_type:
                     print "Requesting URL with Python Requests: ", current_url
                     get_response = requests.get(current_url, headers=REQUEST_HEADERS, timeout=60)
                     content_type = get_response.headers.get('content-type')
-                    encoding = get_response.encoding
-                    page_source = get_response.text
-                    final_url = get_response.url
-                    parsed_html = BeautifulSoup(html)
-                    add_contact_info(final_url, parsed_html)
-                    add_new_urls(final_url, parsed_html)                    
-
-                    
-                    url_parsed = urlparse.urlsplit(final_url)
-                    url_path = url_parsed.path.strip()
-
+                    if 'text/html' in content_type:
+                        final_url = head_response.url
+                        final_url_parsed = urlparse.urlsplit(final_url)
+                        final_url_hostname = final_url_parsed.hostname
+                        if is_seed_url:
+                            contact_info_dict[seed_url]['final_url'] = final_url
+                            contact_info_dict[seed_url]['final_url_hostname'] = final_url_hostname                            
+                        page_source = get_response.text
+                        parsed_html = BeautifulSoup(html)
+                        add_contact_info(seed_url, parsed_html)
+                        if need_to_add_new_urls(seed_url, final_url):
+                            add_new_urls(final_url, parsed_html)                    
 
             global files_processed
             files_processed += 1
@@ -111,15 +114,15 @@ if __name__ == "__main__":
         url = url.strip()
         if not url:
             continue
-        try:    
-            files_processed = 0
-            errors_encountered = 0
-            contact_items_found = 0
-            urls_to_visit = [url]
-            all_urls = [url]
+        files_processed = 0
+        errors_encountered = 0
+        contact_items_found = 0
+        urls_to_visit = [url]
+        all_urls = [url]
 
         start_time = datetime.datetime.now()
         print "\nCurrent Time:  %s" % start_time
         crawl_url()
         end_time = datetime.datetime.now()
+        print contact_info_dict
         print "\nStart:  %s\nFinish: %s\n" % (start_time, end_time)
