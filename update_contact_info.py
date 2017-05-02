@@ -13,11 +13,14 @@ ignore_anchors = False
 
 def add_contact_info(seed_url, html):
     email_addresses = re.findall(EMAIL_REGEX, html)
-    contact_info_dict[seed_url]['email'] = contact_info_dict[seed_url]['email'] + email_addresses
+    if email_addresses:
+        contact_info_dict[seed_url]['email'] = list(set(contact_info_dict[seed_url]['email'] + email_addresses))
 
 def fits_url_blacklist(url):
-    if 'wikipedia' in url.lower():
-        return True
+    BLACKLISTED_URLS = ['wikipedia', 'youtube']
+    for blacklisted_url in BLACKLISTED_URLS: 
+        if blacklisted_url  in url.lower():
+            return True
     return False
 
 def get_processed_whitelist_url(url):
@@ -30,8 +33,7 @@ def get_processed_whitelist_url(url):
 
     return None
 
-def add_new_urls(url, page_source):
-    if fits_url_blacklist(url):
+def add_new_urls(url, seed_url, page_source):
     print "Adding new URLs from page source of URL: %s" % url
     parsed_html = BeautifulSoup(page_source)
     for tag in parsed_html.findAll('a', href=True):
@@ -49,12 +51,12 @@ def add_new_urls(url, page_source):
             if href_absolute_url.startswith('http'): # We don't care about mailto:foo@bar.com etc.                
                 if fits_url_blacklist(href_absolute_url): # Ignore blacklisted
                     continue
-                if contact_info_dict[seed_url]['final_url_hostname'] in final_url: # Part of the same domain                                
+                if contact_info_dict[seed_url]['seed_url_hostname'] in href_absolute_url or contact_info_dict[seed_url]['final_url_hostname'] in href_absolute_url: # Part of the same domain as the seed URL                               
                     if href_absolute_url not in all_urls:                
                         urls_to_visit.append(href_absolute_url)
                         all_urls.append(href_absolute_url)
                 else: # Check a whitelist of URLs that we will potentially modify
-                    processed_url = get_processed_whitelist_url(final_url)
+                    processed_url = get_processed_whitelist_url(href_absolute_url)
                     if processed_url:                    
                         if processed_url not in all_urls:                
                             urls_to_visit.append(processed_url)
@@ -63,67 +65,47 @@ def add_new_urls(url, page_source):
 def crawl_url(seed_url):
     global errors_encountered
     print "\n* NEW CRAWLING SESSION FOR URL: %s *\n" % seed_url
-    contact_info_dict[seed_url] = { 'final_url': '', 'final_url_hostname': '', 'email': [], 'phone': [], 'twitter': [] }
+    contact_info_dict[seed_url] = { 'seed_url_hostname': '', 'final_url': '', 'final_url_hostname': '', 'email': [], 'phone': [], 'twitter': [] }
     is_seed_url = True
     
     while len(urls_to_visit) > 0:
         current_url = urls_to_visit.pop(0)
-        do_get_request = False
-        do_add_urls = False
         try:
             # time.sleep(request_delay)
-            if fits_url_blacklist(final_url):
+            if fits_url_blacklist(current_url):
                 continue
-            print "\nProcessing URL: %s\n" % current_url            
-            get_response = requests.get(final_url, headers=REQUEST_HEADERS, timeout=60)
-            content_type = get_response.headers.get('content-type')
-            if 'text/html' in content_type:                
-                final_url = get_response.url
-                final_url_parsed = urlparse.urlsplit(final_url)
-                final_url_hostname = final_url_parsed.hostname
-                if is_seed_url:
-                    contact_info_dict[seed_url]['final_url'] = final_url
-                    contact_info_dict[seed_url]['final_url_hostname'] = final_url_hostname
-                page_source = get_response.text
-                if page_source:
-                    add_contact_info(seed_url, page_source)
-                    if is_seed_url:
-                        add_new_urls(seed_url, page_source)
-                    elif contact_info_dict[seed_url]['final_url_hostname'] in final_url:
-                        add_new_urls(seed_url, page_source)
-                ## else:
-                ## if 'text/html' in content_type:
-                ##     final_url = head_response.url
-                ##     final_url_parsed = urlparse.urlsplit(final_url)
-                ##     final_url_hostname = final_url_parsed.hostname
-                ##     if is_seed_url:
-                ##         contact_info_dict[seed_url]['final_url'] = final_url
-                ##         contact_info_dict[seed_url]['final_url_hostname'] = final_url_hostname
-                ##     if fits_url_blacklist(final_url):
-                ##         continue
-                ##     if contact_info_dict[seed_url]['final_url_hostname'] in final_url:
-                ##         do_get_request = True
-                ##         do_add_urls = True
-                ##     else:
-                ##         final_url = get_processed_whitelist_url(final_url)
-                ##         if final_url:
-                ##             do_get_request = True
-                ##     if do_get_request:
-                ##         print "Requesting URL with Python Requests: ", current_url
-                ##         get_response = requests.get(final_url, headers=REQUEST_HEADERS, timeout=60)
-                ##         content_type = get_response.headers.get('content-type')
-                ##         if 'text/html' in content_type:
-                ##             page_source = get_response.text
-                ##             if page_source:
-                ##                 add_contact_info(seed_url, page_source)
-                ##                 if do_add_urls:
-                ##                     add_new_urls(seed_url, page_source)
+            print "\nProcessing URL: %s\n" % current_url
+            head_response = requests.head(current_url, allow_redirects=True, headers=REQUEST_HEADERS, timeout=60)
+            if head_response.status_code == requests.codes.ok:
+                content_type = head_response.headers.get('content-type')                    
+                if 'text/html' in content_type:            
+                    get_response = requests.get(current_url, headers=REQUEST_HEADERS, timeout=60)
+                    content_type = get_response.headers.get('content-type')
+                    if 'text/html' in content_type:                
+                        final_url = get_response.url
+                        final_url_hostname = urlparse.urlsplit(final_url).hostname
+                        if is_seed_url:
+                            seed_url_hostname = urlparse.urlsplit(seed_url).hostname
+                            contact_info_dict[seed_url]['final_url'] = final_url
+                            contact_info_dict[seed_url]['final_url_hostname'] = final_url_hostname                    
+                            contact_info_dict[seed_url]['seed_url_hostname'] = seed_url_hostname
+                        page_source = get_response.text
+                        if page_source:
+                            add_contact_info(seed_url, page_source)
+                        if is_seed_url:
+                            add_new_urls(final_url, seed_url, page_source)
+                        elif contact_info_dict[seed_url]['seed_url_hostname'] in final_url:
+                            add_new_urls(final_url, seed_url, page_source)
+                        elif contact_info_dict[seed_url]['final_url_hostname'] in final_url:
+                            add_new_urls(final_url, seed_url, page_source)                        
 
             is_seed_url = False                                    
             global files_processed
             files_processed += 1
-            print "Files Found: %d  Processed: %d  Remaining: %d  Contact Items Found: %d  Operational Errors: %d" % ( len(all_urls), files_processed, len(urls_to_visit), contact_items_found, errors_encountered )
+            print "Files Found: %d  Processed: %d  Remaining: %d  Operational Errors: %d" % ( len(all_urls), files_processed, len(urls_to_visit), errors_encountered )
             print contact_info_dict
+            if len(urls_to_visit) == 0:
+                csv_writer.writerow([ seed_url, contact_info_dict[seed_url]['seed_url_hostname'], contact_info_dict[seed_url]['final_url'], contact_info_dict[seed_url]['final_url_hostname'], ', '.join(contact_info_dict[seed_url]['email']) ])
         except:
             errors_encountered += 1
             try:
@@ -155,14 +137,14 @@ if __name__ == "__main__":
     print "Found %d URLs" % len(urls)
 
     with open(output_file, 'wb') as f:
-        csv_writer = csv.writer(f)        
+        csv_writer = csv.writer(f)
+        csv_writer.writerow([ 'seed_url', 'seed_url_hostname', 'final_url', 'final_url_hostname', 'emails' ])        
         for url in urls:
             url = url.strip()
             if not url:
                 continue
             files_processed = 0
             errors_encountered = 0
-            contact_items_found = 0
             urls_to_visit = [url]
             all_urls = [url]
 
