@@ -10,14 +10,16 @@ EMAIL_REGEX = re.compile(r"[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]+")
 contact_info_dict = {}
 ignore_query_strings = True
 ignore_anchors = True
+site_urls_cutoff = 50
 
 def add_contact_info(seed_url, html):
+    html = html.replace('&#064;', '@')
     email_addresses = re.findall(EMAIL_REGEX, html)
     if email_addresses:
         contact_info_dict[seed_url]['email'] = list(set(contact_info_dict[seed_url]['email'] + email_addresses))
 
 def fits_url_blacklist(url):
-    BLACKLISTED_CONTAINS = ['wikipedia', 'youtube']
+    BLACKLISTED_CONTAINS = ['wikipedia', 'youtube', 'facebook', 'twitter', 'last.fm', 'tumblr', 'myspace', 'instagram']
     BLACKLISTED_ENDINGS = [
         '.mp3', '.wav', '.m4a', '.3gp', '.ogg', '.flac', '.wma', '.aiff', '.m3u',
         '.mp4', '.mov', '.m4v', '.wmv', 
@@ -34,18 +36,26 @@ def fits_url_blacklist(url):
             return True        
     return False
 
-def get_processed_whitelist_url(url):
-    # Check if facebook, twitter, last.fm, etc. for an about page, otherwise return None
-    if 'facebook.com' in url and not 'about' in url:
-        if not url.endswith('/'):
-            url = '%s/' % url
-        url = urlparse.urljoin(url, 'about')
+def get_modified_seed_url(url):
+    # Modify certain URLs like facebook, twitter, last.fm, etc. to get about page. Blacklist certain others.
+    if 'facebook.com' in url:
+        ## if not 'facebook.com/pg' in url:
+        ##     url = url.replace('facebook.com', 'facebook.com/pg')
+        if not 'about' in url:
+            if not url.endswith('/'):
+                url = '%s/' % url
+            url = urlparse.urljoin(url, 'about')
         return url
-
-    return None
+    elif fits_url_blacklist(url):
+        return None
+    return url
 
 def add_new_urls(url, seed_url, page_source):
-    print "Adding new URLs from page source of URL: %s" % url
+    if len(all_urls) > site_urls_cutoff:
+        print "Reached site URLs cutoff for %s" % seed_url
+        return True
+    else:
+        print "Adding new URLs from page source of URL: %s" % url
     parsed_html = BeautifulSoup(page_source)
     for tag in parsed_html.findAll('a', href=True):
         href = tag['href'].strip() # Stripping handles <a href=" http...
@@ -66,12 +76,6 @@ def add_new_urls(url, seed_url, page_source):
                     if href_absolute_url not in all_urls:                
                         urls_to_visit.append(href_absolute_url)
                         all_urls.append(href_absolute_url)
-                else: # Check a whitelist of URLs that we will potentially modify
-                    processed_url = get_processed_whitelist_url(href_absolute_url)
-                    if processed_url:                    
-                        if processed_url not in all_urls:                
-                            urls_to_visit.append(processed_url)
-                            all_urls.append(processed_url)
         
 def crawl_url(seed_url):
     global errors_encountered
@@ -83,14 +87,13 @@ def crawl_url(seed_url):
         current_url = urls_to_visit.pop(0)
         try:
             # time.sleep(request_delay)
-            if fits_url_blacklist(current_url):
-                continue
             print "\nProcessing URL: %s\n" % current_url
-            head_response = requests.head(current_url, allow_redirects=True, headers=REQUEST_HEADERS, timeout=60)
+            head_response = requests.head(current_url, allow_redirects=True, headers=REQUEST_HEADERS, timeout=30)
             if head_response.status_code == requests.codes.ok:
+            # if head_response.status_code:                
                 content_type = head_response.headers.get('content-type')                    
                 if 'text/html' in content_type:            
-                    get_response = requests.get(current_url, headers=REQUEST_HEADERS, timeout=60)
+                    get_response = requests.get(current_url, headers=REQUEST_HEADERS, timeout=30)
                     content_type = get_response.headers.get('content-type')
                     if 'text/html' in content_type:                
                         final_url = get_response.url
@@ -156,6 +159,9 @@ if __name__ == "__main__":
             url = url.strip()
             if not url:
                 continue
+            url = get_modified_seed_url(url)
+            if not url:
+                continue            
             files_processed = 0
             errors_encountered = 0
             urls_to_visit = [url]
