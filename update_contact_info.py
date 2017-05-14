@@ -8,8 +8,8 @@ REQUEST_HEADERS = { 'User-Agent': 'Mozilla/5.0' }
 EMAIL_REGEX = re.compile(r"[A-Za-z0-9\.\+_-]+@[A-Za-z0-9\._-]+\.[a-zA-Z]+")
 
 contact_info_dict = {}
-ignore_query_strings = False
-ignore_anchors = False
+ignore_query_strings = True
+ignore_anchors = True
 
 def add_contact_info(seed_url, html):
     email_addresses = re.findall(EMAIL_REGEX, html)
@@ -17,10 +17,21 @@ def add_contact_info(seed_url, html):
         contact_info_dict[seed_url]['email'] = list(set(contact_info_dict[seed_url]['email'] + email_addresses))
 
 def fits_url_blacklist(url):
-    BLACKLISTED_URLS = ['wikipedia', 'youtube']
-    for blacklisted_url in BLACKLISTED_URLS: 
-        if blacklisted_url  in url.lower():
+    BLACKLISTED_CONTAINS = ['wikipedia', 'youtube']
+    BLACKLISTED_ENDINGS = [
+        '.mp3', '.wav', '.m4a', '.3gp', '.ogg', '.flac', '.wma', '.aiff', '.m3u',
+        '.mp4', '.mov', '.m4v', '.wmv', 
+        '.jpg', '.jpeg', '.png', '.gif',
+        '.7z', '.zip', '.cals', '.tar', '.gz',
+        '.pdf',
+    ]
+    url_lowercase = url.lower()
+    for blacklisted_contain in BLACKLISTED_CONTAINS: 
+        if blacklisted_contain  in url_lowercase:    
             return True
+    for blacklisted_ending in BLACKLISTED_ENDINGS: 
+        if url_lowercase.endswith(blacklisted_ending):    
+            return True        
     return False
 
 def get_processed_whitelist_url(url):
@@ -106,6 +117,7 @@ def crawl_url(seed_url):
             print contact_info_dict
             if len(urls_to_visit) == 0:
                 csv_writer.writerow([ seed_url, contact_info_dict[seed_url]['seed_url_hostname'], contact_info_dict[seed_url]['final_url'], contact_info_dict[seed_url]['final_url_hostname'], ', '.join(contact_info_dict[seed_url]['email']) ])
+                f.flush()
         except:
             errors_encountered += 1
             try:
@@ -138,7 +150,8 @@ if __name__ == "__main__":
 
     with open(output_file, 'wb') as f:
         csv_writer = csv.writer(f)
-        csv_writer.writerow([ 'seed_url', 'seed_url_hostname', 'final_url', 'final_url_hostname', 'emails' ])        
+        csv_writer.writerow([ 'seed_url', 'seed_url_hostname', 'final_url', 'final_url_hostname', 'emails' ])
+        f.flush()
         for url in urls:
             url = url.strip()
             if not url:
