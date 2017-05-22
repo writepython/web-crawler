@@ -1,4 +1,5 @@
 ## sudo apt-get install python-musicbrainzngs
+## sed '/^$/d' file.txt | wc -l
 
 import csv, musicbrainzngs
 
@@ -10,5 +11,5 @@ with open('/home/vagrant/a.csv', 'wb') as f:
     for i in range(981):
         result = musicbrainzngs.search_artists(country="US", limit=100, offset=i)
         for artist in result['artist-list']:
-	        csv_writer.writerow([artist['id'], artist["name"]])
+	        csv_writer.writerow([artist['id'], artist["name"].encode('utf-8')])
 	        f.flush()
