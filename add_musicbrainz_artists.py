@@ -12,4 +12,4 @@ with open('/home/vagrant/a.csv', 'wb') as f:
         result = musicbrainzngs.search_artists(country="US", limit=100, offset=i)
         for artist in result['artist-list']:
 	        csv_writer.writerow([artist['id'], artist["name"].encode('utf-8')])
-	        f.flush()
+	    f.flush()
