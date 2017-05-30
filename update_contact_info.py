@@ -54,11 +54,13 @@ def get_modified_seed_url(url):
     return url
 
 def add_new_urls(url, seed_url, page_source):
-    print "Adding new URLs from page source of URL: %s" % url
+    # print "Adding new URLs from page source of URL: %s" % url
+    # if 'facebook' in seed_url:
+    #     return True
     parsed_html = BeautifulSoup(page_source)
     for tag in parsed_html.findAll('a', href=True):
         if len(all_urls) > site_urls_cutoff:
-            print "Reached site URLs cutoff for %s" % seed_url
+            # print "Reached site URLs cutoff for %s" % seed_url
             return True
         href = tag['href'].strip() # Stripping handles <a href=" http...
         if ignore_anchors:
@@ -84,7 +86,7 @@ def crawl_url(seed_url, musicbrainz_id, musicbrainz_name):
     global current_row
     global contact_info_dict
     current_row += 1
-    print "\n* (%d) NEW CRAWLING SESSION FOR URL: %s *\n" % (current_row, seed_url)
+    # print "\n* (%d) NEW CRAWLING SESSION FOR URL: %s *\n" % (current_row, seed_url)
     # contact_info_dict[seed_url] = { 'seed_url_hostname': '', 'final_url': '', 'final_url_hostname': '', 'email': [], 'phone': [], 'twitter': [] }
     contact_info_dict[seed_url] = { 'seed_url_hostname': '', 'final_url': '', 'final_url_hostname': '', 'email': [] }
     is_seed_url = True
@@ -93,7 +95,7 @@ def crawl_url(seed_url, musicbrainz_id, musicbrainz_name):
         current_url = urls_to_visit.pop(0)
         try:
             # time.sleep(request_delay)
-            print "\nProcessing URL: %s\n" % current_url
+            # print "\nProcessing URL: %s\n" % current_url
             head_response = requests.head(current_url, allow_redirects=True, headers=REQUEST_HEADERS, timeout=30)
             if head_response.status_code == requests.codes.ok:
             # if head_response.status_code:                
@@ -112,7 +114,7 @@ def crawl_url(seed_url, musicbrainz_id, musicbrainz_name):
                         page_source = get_response.text
                         if page_source:
                             add_contact_info(seed_url, page_source)
-                        if is_seed_url:
+                        if is_seed_url: # and 'facebook' not in final_url:
                             add_new_urls(final_url, seed_url, page_source)
                         # elif contact_info_dict[seed_url]['seed_url_hostname'] in final_url:
                         #     add_new_urls(final_url, seed_url, page_source)
@@ -122,7 +124,7 @@ def crawl_url(seed_url, musicbrainz_id, musicbrainz_name):
             is_seed_url = False                                    
             global files_processed
             files_processed += 1
-            print "Files Found: %d  Processed: %d  Remaining: %d  Operational Errors: %d" % ( len(all_urls), files_processed, len(urls_to_visit), errors_encountered )
+            # print "Files Found: %d  Processed: %d  Remaining: %d  Operational Errors: %d" % ( len(all_urls), files_processed, len(urls_to_visit), errors_encountered )
             # print contact_info_dict
             if len(urls_to_visit) == 0:
                 for email in contact_info_dict[seed_url]['email']:
@@ -136,7 +138,7 @@ def crawl_url(seed_url, musicbrainz_id, musicbrainz_name):
                 traceback_info = '\n'.join(traceback.format_exception(*(sys.exc_info())))
             except:
                 traceback_info = ''
-            print "*** ERROR PROCESSING: %s ***\nTraceback: %s\n" % ( current_url, traceback_info )
+            # print "*** ERROR PROCESSING: %s ***\nTraceback: %s\n" % ( current_url, traceback_info )
 
 if __name__ == "__main__":
     argv = sys.argv[1:]
