@@ -24,7 +24,7 @@ BLACKLISTED_ENDINGS = (
 def add_contact_info(seed_url, html):
     email_addresses = []
     html = html.replace('&#064;', '@')
-    potential_email_addresses = re.findall(EMAIL_REGEX, html)
+    potential_email_addresses = list(set(re.findall(EMAIL_REGEX, html)))
     if potential_email_addresses:
         for potential_email in potential_email_addresses:
             if not potential_email.lower().endswith(BLACKLISTED_ENDINGS):
